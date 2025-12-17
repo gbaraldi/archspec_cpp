@@ -21,13 +21,6 @@ jobs:
       fail-fast: false
       matrix:
         compiler: [gcc, clang]
-        include:
-          - compiler: gcc
-            cc: gcc
-            cxx: g++
-          - compiler: clang
-            cc: clang
-            cxx: clang++
 
     steps:
     - uses: actions/checkout@v4
@@ -35,10 +28,7 @@ jobs:
         submodules: recursive
 
     - name: Build
-      env:
-        CC: ${{ matrix.cc }}
-        CXX: ${{ matrix.cxx }}
-      run: make
+      run: make CXX=${{ matrix.compiler == 'gcc' && 'g++' || 'clang++' }} CC=${{ matrix.compiler }}
 
     - name: Run tests
       run: make check
@@ -48,27 +38,12 @@ jobs:
 
   build-macos:
     runs-on: macos-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        compiler: [clang, gcc]
-        include:
-          - compiler: clang
-            cc: clang
-            cxx: clang++
-          - compiler: gcc
-            cc: gcc-13
-            cxx: g++-13
-
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
 
     - name: Build
-      env:
-        CC: ${{ matrix.cc }}
-        CXX: ${{ matrix.cxx }}
       run: make
 
     - name: Run tests
@@ -86,7 +61,7 @@ jobs:
 
     - name: Build (MinGW)
       shell: bash
-      run: make CXX=g++ CC=gcc
+      run: make
 
     - name: Run tests
       shell: bash
@@ -100,17 +75,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-      with:
-        submodules: recursive
 
     - name: Build and test on FreeBSD
       uses: vmactions/freebsd-vm@v1
       with:
         usesh: true
         prepare: |
-          pkg install -y gmake
+          pkg install -y gmake git
         run: |
-          gmake CXX=clang++ CC=clang
+          git submodule update --init --recursive
+          gmake
           gmake check
           gmake run-examples
 
@@ -133,4 +107,3 @@ jobs:
 
     - name: Run examples
       run: make run-examples
-
