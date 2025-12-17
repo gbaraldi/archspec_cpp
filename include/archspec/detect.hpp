@@ -53,8 +53,16 @@ std::optional<std::string> brand_string();
 
 /**
  * Get a list of all microarchitectures compatible with the detected CPU
+ * Uses get_machine() to determine the architecture
  */
 std::vector<const Microarchitecture*> compatible_microarchitectures(const DetectedCpuInfo& info);
+
+/**
+ * Get a list of all microarchitectures compatible with the detected CPU
+ * Uses the specified architecture string
+ */
+std::vector<const Microarchitecture*> compatible_microarchitectures(const DetectedCpuInfo& info,
+                                                                    const std::string& arch);
 
 // Platform-specific detection functions
 

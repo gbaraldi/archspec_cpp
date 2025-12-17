@@ -4,11 +4,13 @@
 
 #include "test_common.hpp"
 #include <archspec/archspec.hpp>
-#include <fstream>
-#include <sstream>
+#include <algorithm>
+#include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <map>
 #include <set>
+#include <sstream>
 
 using namespace archspec;
 
@@ -17,18 +19,19 @@ namespace fs = std::filesystem;
 // Parse cpuinfo content (similar to detect_from_proc_cpuinfo but takes string input)
 DetectedCpuInfo parse_cpuinfo_content(const std::string& content, const std::string& arch) {
     DetectedCpuInfo info;
-    
+
     std::map<std::string, std::string> data;
     std::istringstream stream(content);
     std::string line;
-    
+
     while (std::getline(stream, line)) {
         size_t colon = line.find(':');
         if (colon == std::string::npos) {
-            if (!data.empty()) break;
+            if (!data.empty())
+                break;
             continue;
         }
-        
+
         // Trim key
         std::string key = line.substr(0, colon);
         size_t start = key.find_first_not_of(" \t");
@@ -36,7 +39,7 @@ DetectedCpuInfo parse_cpuinfo_content(const std::string& content, const std::str
         if (start != std::string::npos) {
             key = key.substr(start, end - start + 1);
         }
-        
+
         // Trim value
         std::string value = line.substr(colon + 1);
         start = value.find_first_not_of(" \t");
@@ -46,13 +49,13 @@ DetectedCpuInfo parse_cpuinfo_content(const std::string& content, const std::str
         } else {
             value = "";
         }
-        
+
         data[key] = value;
     }
-    
+
     if (arch == "x86_64" || arch == "i686" || arch == "i386") {
         info.vendor = data.count("vendor_id") ? data["vendor_id"] : "generic";
-        
+
         // Parse flags
         if (data.count("flags")) {
             std::istringstream flags_stream(data["flags"]);
@@ -61,7 +64,7 @@ DetectedCpuInfo parse_cpuinfo_content(const std::string& content, const std::str
                 info.features.insert(flag);
             }
         }
-        
+
         // ssse3 implies sse3 (Linux reports sse3 as "pni")
         if (info.features.count("ssse3")) {
             info.features.insert("sse3");
@@ -80,7 +83,7 @@ DetectedCpuInfo parse_cpuinfo_content(const std::string& content, const std::str
         } else {
             info.vendor = "generic";
         }
-        
+
         // Parse features
         if (data.count("Features")) {
             std::istringstream feat_stream(data["Features"]);
@@ -89,7 +92,7 @@ DetectedCpuInfo parse_cpuinfo_content(const std::string& content, const std::str
                 info.features.insert(feat);
             }
         }
-        
+
         info.cpu_part = data.count("CPU part") ? data["CPU part"] : "";
     } else if (arch == "ppc64le" || arch == "ppc64") {
         // Parse POWER generation
@@ -103,32 +106,37 @@ DetectedCpuInfo parse_cpuinfo_content(const std::string& content, const std::str
                     gen_str += cpu_str[pos++];
                 }
                 if (!gen_str.empty()) {
-                    info.generation = std::stoi(gen_str);
+                    char* end = nullptr;
+                    long val = std::strtol(gen_str.c_str(), &end, 10);
+                    if (end != gen_str.c_str()) {
+                        info.generation = static_cast<int>(val);
+                    }
                 }
             }
         }
     }
-    
+
     return info;
 }
 
 // Detect host from cpuinfo content
 std::string detect_from_content(const std::string& content, const std::string& arch) {
     DetectedCpuInfo info = parse_cpuinfo_content(content, arch);
-    auto candidates = compatible_microarchitectures(info);
-    
+    auto candidates = compatible_microarchitectures(info, arch);
+
     if (candidates.empty()) {
         return arch;
     }
-    
+
     // Sorting criteria: more ancestors and more features is better
     auto sorting_fn = [](const Microarchitecture* a, const Microarchitecture* b) {
         size_t a_depth = a->ancestors().size();
         size_t b_depth = b->ancestors().size();
-        if (a_depth != b_depth) return a_depth < b_depth;
+        if (a_depth != b_depth)
+            return a_depth < b_depth;
         return a->features().size() < b->features().size();
     };
-    
+
     // Find best generic candidate
     std::vector<const Microarchitecture*> generic_candidates;
     for (const auto* c : candidates) {
@@ -136,12 +144,13 @@ std::string detect_from_content(const std::string& content, const std::string& a
             generic_candidates.push_back(c);
         }
     }
-    
+
     const Microarchitecture* best_generic = nullptr;
     if (!generic_candidates.empty()) {
-        best_generic = *std::max_element(generic_candidates.begin(), generic_candidates.end(), sorting_fn);
+        best_generic =
+            *std::max_element(generic_candidates.begin(), generic_candidates.end(), sorting_fn);
     }
-    
+
     // Filter by CPU part for AArch64
     if (!info.cpu_part.empty()) {
         std::vector<const Microarchitecture*> cpu_part_matches;
@@ -154,7 +163,7 @@ std::string detect_from_content(const std::string& content, const std::string& a
             candidates = cpu_part_matches;
         }
     }
-    
+
     // Filter candidates to be descendants of best generic
     if (best_generic) {
         std::vector<const Microarchitecture*> filtered;
@@ -167,19 +176,21 @@ std::string detect_from_content(const std::string& content, const std::string& a
             candidates = filtered;
         }
     }
-    
+
     if (candidates.empty()) {
         return best_generic ? best_generic->name() : arch;
     }
-    
-    const Microarchitecture* best = *std::max_element(candidates.begin(), candidates.end(), sorting_fn);
+
+    const Microarchitecture* best =
+        *std::max_element(candidates.begin(), candidates.end(), sorting_fn);
     return best->name();
 }
 
 // Read file content
 std::string read_file_content(const std::string& path) {
     std::ifstream file(path);
-    if (!file.is_open()) return "";
+    if (!file.is_open())
+        return "";
     std::stringstream buffer;
     buffer << file.rdbuf();
     return buffer.str();
@@ -199,7 +210,8 @@ std::string extract_arch_from_filename(const std::string& filename) {
     if (filename.find("linux-") == 0 || filename.find("bgq-") == 0) {
         // Check for power
         if (filename.find("power") != std::string::npos) {
-            if (filename.find("le") != std::string::npos) return "ppc64le";
+            if (filename.find("le") != std::string::npos)
+                return "ppc64le";
             return "ppc64";
         }
         // Check for ARM
@@ -224,9 +236,10 @@ std::string extract_arch_from_filename(const std::string& filename) {
 }
 
 TEST(fake_cpuinfo_zen3) {
-    std::string content = read_file_content("extern/archspec/archspec/json/tests/targets/linux-ubuntu20.04-zen3");
+    std::string content =
+        read_file_content("extern/archspec/archspec/json/tests/targets/linux-ubuntu20.04-zen3");
     ASSERT(!content.empty());
-    
+
     std::string detected = detect_from_content(content, "x86_64");
     std::cout << "(detected: " << detected << ", expected: zen3) ";
     ASSERT_EQ(detected, "zen3");
@@ -234,9 +247,10 @@ TEST(fake_cpuinfo_zen3) {
 }
 
 TEST(fake_cpuinfo_haswell) {
-    std::string content = read_file_content("extern/archspec/archspec/json/tests/targets/linux-rhel7-haswell");
+    std::string content =
+        read_file_content("extern/archspec/archspec/json/tests/targets/linux-rhel7-haswell");
     ASSERT(!content.empty());
-    
+
     std::string detected = detect_from_content(content, "x86_64");
     std::cout << "(detected: " << detected << ", expected: haswell) ";
     ASSERT_EQ(detected, "haswell");
@@ -244,9 +258,10 @@ TEST(fake_cpuinfo_haswell) {
 }
 
 TEST(fake_cpuinfo_broadwell) {
-    std::string content = read_file_content("extern/archspec/archspec/json/tests/targets/linux-rhel7-broadwell");
+    std::string content =
+        read_file_content("extern/archspec/archspec/json/tests/targets/linux-rhel7-broadwell");
     ASSERT(!content.empty());
-    
+
     std::string detected = detect_from_content(content, "x86_64");
     std::cout << "(detected: " << detected << ", expected: broadwell) ";
     ASSERT_EQ(detected, "broadwell");
@@ -254,9 +269,10 @@ TEST(fake_cpuinfo_broadwell) {
 }
 
 TEST(fake_cpuinfo_cascadelake) {
-    std::string content = read_file_content("extern/archspec/archspec/json/tests/targets/linux-centos7-cascadelake");
+    std::string content =
+        read_file_content("extern/archspec/archspec/json/tests/targets/linux-centos7-cascadelake");
     ASSERT(!content.empty());
-    
+
     std::string detected = detect_from_content(content, "x86_64");
     std::cout << "(detected: " << detected << ", expected: cascadelake) ";
     ASSERT_EQ(detected, "cascadelake");
@@ -264,9 +280,10 @@ TEST(fake_cpuinfo_cascadelake) {
 }
 
 TEST(fake_cpuinfo_skylake_avx512) {
-    std::string content = read_file_content("extern/archspec/archspec/json/tests/targets/linux-rhel7-skylake_avx512");
+    std::string content =
+        read_file_content("extern/archspec/archspec/json/tests/targets/linux-rhel7-skylake_avx512");
     ASSERT(!content.empty());
-    
+
     std::string detected = detect_from_content(content, "x86_64");
     std::cout << "(detected: " << detected << ", expected: skylake_avx512) ";
     ASSERT_EQ(detected, "skylake_avx512");
@@ -274,9 +291,10 @@ TEST(fake_cpuinfo_skylake_avx512) {
 }
 
 TEST(fake_cpuinfo_piledriver) {
-    std::string content = read_file_content("extern/archspec/archspec/json/tests/targets/linux-rhel6-piledriver");
+    std::string content =
+        read_file_content("extern/archspec/archspec/json/tests/targets/linux-rhel6-piledriver");
     ASSERT(!content.empty());
-    
+
     std::string detected = detect_from_content(content, "x86_64");
     std::cout << "(detected: " << detected << ", expected: piledriver) ";
     ASSERT_EQ(detected, "piledriver");
@@ -284,9 +302,10 @@ TEST(fake_cpuinfo_piledriver) {
 }
 
 TEST(fake_cpuinfo_zen4) {
-    std::string content = read_file_content("extern/archspec/archspec/json/tests/targets/linux-rocky8.5-zen4");
+    std::string content =
+        read_file_content("extern/archspec/archspec/json/tests/targets/linux-rocky8.5-zen4");
     ASSERT(!content.empty());
-    
+
     std::string detected = detect_from_content(content, "x86_64");
     std::cout << "(detected: " << detected << ", expected: zen4) ";
     ASSERT_EQ(detected, "zen4");
@@ -298,9 +317,10 @@ TEST(fake_cpuinfo_zen4) {
 // These are left as placeholders for future cross-architecture testing support.
 
 TEST(fake_cpuinfo_zen) {
-    std::string content = read_file_content("extern/archspec/archspec/json/tests/targets/linux-rhel7-zen");
+    std::string content =
+        read_file_content("extern/archspec/archspec/json/tests/targets/linux-rhel7-zen");
     ASSERT(!content.empty());
-    
+
     std::string detected = detect_from_content(content, "x86_64");
     std::cout << "(detected: " << detected << ", expected: zen) ";
     ASSERT_EQ(detected, "zen");
@@ -308,9 +328,10 @@ TEST(fake_cpuinfo_zen) {
 }
 
 TEST(fake_cpuinfo_zen5) {
-    std::string content = read_file_content("extern/archspec/archspec/json/tests/targets/linux-rocky9-zen5");
+    std::string content =
+        read_file_content("extern/archspec/archspec/json/tests/targets/linux-rocky9-zen5");
     ASSERT(!content.empty());
-    
+
     std::string detected = detect_from_content(content, "x86_64");
     std::cout << "(detected: " << detected << ", expected: zen5) ";
     ASSERT_EQ(detected, "zen5");
@@ -320,25 +341,24 @@ TEST(fake_cpuinfo_zen5) {
 int main() {
     std::cout << "=== archspec_cpp Fake cpuinfo Tests ===" << std::endl;
     std::cout << std::endl;
-    
+
     // x86_64 tests (Intel)
     RUN_TEST(fake_cpuinfo_haswell);
     RUN_TEST(fake_cpuinfo_broadwell);
     RUN_TEST(fake_cpuinfo_skylake_avx512);
     RUN_TEST(fake_cpuinfo_cascadelake);
-    
+
     // x86_64 tests (AMD)
     RUN_TEST(fake_cpuinfo_piledriver);
     RUN_TEST(fake_cpuinfo_zen);
     RUN_TEST(fake_cpuinfo_zen3);
     RUN_TEST(fake_cpuinfo_zen4);
     RUN_TEST(fake_cpuinfo_zen5);
-    
+
     std::cout << std::endl;
     std::cout << "=== Results ===" << std::endl;
     std::cout << "Passed: " << g_tests_passed << std::endl;
     std::cout << "Failed: " << g_tests_failed << std::endl;
-    
+
     return g_tests_failed > 0 ? 1 : 0;
 }
-

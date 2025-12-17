@@ -533,10 +533,10 @@ bool check_riscv64(const DetectedCpuInfo& info, const Microarchitecture& target)
 
 } // namespace compatibility
 
-std::vector<const Microarchitecture*> compatible_microarchitectures(const DetectedCpuInfo& info) {
+std::vector<const Microarchitecture*> compatible_microarchitectures(const DetectedCpuInfo& info,
+                                                                    const std::string& arch) {
     std::vector<const Microarchitecture*> result;
     const auto& db = MicroarchitectureDatabase::instance();
-    std::string arch = get_machine();
 
     // Select compatibility checker based on architecture
     std::function<bool(const DetectedCpuInfo&, const Microarchitecture&)> checker;
@@ -573,6 +573,10 @@ std::vector<const Microarchitecture*> compatible_microarchitectures(const Detect
     }
 
     return result;
+}
+
+std::vector<const Microarchitecture*> compatible_microarchitectures(const DetectedCpuInfo& info) {
+    return compatible_microarchitectures(info, get_machine());
 }
 
 Microarchitecture host() {
