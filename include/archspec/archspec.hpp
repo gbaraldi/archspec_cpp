@@ -10,4 +10,3 @@
 #include "detect.hpp"
 
 #endif // ARCHSPEC_HPP
-

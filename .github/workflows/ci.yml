@@ -7,6 +7,14 @@ on:
     branches: [ main, master ]
 
 jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check format
+      run: make format-check
+
   build-linux:
     runs-on: ubuntu-latest
     strategy:
@@ -118,7 +126,7 @@ jobs:
         submodules: recursive
 
     - name: Build with C++${{ matrix.std }}
-      run: make CXXFLAGS="-std=c++${{ matrix.std }} -Wall -Wextra -O2"
+      run: make CXXFLAGS="-std=c++${{ matrix.std }} -Wall -Wextra -Werror -O2"
 
     - name: Run tests
       run: make check

@@ -21,11 +21,11 @@ constexpr const char* ARCH_RISCV64 = "riscv64";
  * Information detected about the host CPU
  */
 struct DetectedCpuInfo {
-    std::string name;           // Detected CPU name (if available)
-    std::string vendor;         // CPU vendor
-    std::set<std::string> features;  // Detected CPU features
-    int generation = 0;         // Power generation (POWER CPUs only)
-    std::string cpu_part;       // CPU part number (ARM only)
+    std::string name;               // Detected CPU name (if available)
+    std::string vendor;             // CPU vendor
+    std::set<std::string> features; // Detected CPU features
+    int generation = 0;             // Power generation (POWER CPUs only)
+    std::string cpu_part;           // CPU part number (ARM only)
 };
 
 /**
@@ -92,4 +92,3 @@ bool check_riscv64(const DetectedCpuInfo& info, const Microarchitecture& target)
 } // namespace archspec
 
 #endif // ARCHSPEC_DETECT_HPP
-

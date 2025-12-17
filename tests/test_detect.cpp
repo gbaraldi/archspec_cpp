@@ -13,57 +13,55 @@ int tests_passed = 0;
 int tests_failed = 0;
 
 #define TEST(name) void test_##name()
-#define RUN_TEST(name) do { \
-    std::cout << "Running " #name "... "; \
-    try { \
-        test_##name(); \
-        std::cout << "PASSED" << std::endl; \
-        tests_passed++; \
-    } catch (const std::exception& e) { \
-        std::cout << "FAILED: " << e.what() << std::endl; \
-        tests_failed++; \
-    } catch (...) { \
-        std::cout << "FAILED: unknown exception" << std::endl; \
-        tests_failed++; \
-    } \
-} while(0)
+#define RUN_TEST(name)                                             \
+    do {                                                           \
+        std::cout << "Running " #name "... ";                      \
+        try {                                                      \
+            test_##name();                                         \
+            std::cout << "PASSED" << std::endl;                    \
+            tests_passed++;                                        \
+        } catch (const std::exception& e) {                        \
+            std::cout << "FAILED: " << e.what() << std::endl;      \
+            tests_failed++;                                        \
+        } catch (...) {                                            \
+            std::cout << "FAILED: unknown exception" << std::endl; \
+            tests_failed++;                                        \
+        }                                                          \
+    } while (0)
 
-#define ASSERT(cond) do { \
-    if (!(cond)) { \
-        throw std::runtime_error("Assertion failed: " #cond); \
-    } \
-} while(0)
+#define ASSERT(cond)                                              \
+    do {                                                          \
+        if (!(cond)) {                                            \
+            throw std::runtime_error("Assertion failed: " #cond); \
+        }                                                         \
+    } while (0)
 
-#define ASSERT_EQ(a, b) do { \
-    if ((a) != (b)) { \
-        throw std::runtime_error("Assertion failed: " #a " == " #b); \
-    } \
-} while(0)
+#define ASSERT_EQ(a, b)                                                  \
+    do {                                                                 \
+        if ((a) != (b)) {                                                \
+            throw std::runtime_error("Assertion failed: " #a " == " #b); \
+        }                                                                \
+    } while (0)
 
 // Test get_machine
 TEST(get_machine) {
     std::string machine = get_machine();
     ASSERT(!machine.empty());
     std::cout << "(detected: " << machine << ") ";
-    
+
     // Should be one of the known architectures
-    bool known = (machine == ARCH_X86_64 ||
-                  machine == ARCH_AARCH64 ||
-                  machine == ARCH_PPC64LE ||
-                  machine == ARCH_PPC64 ||
-                  machine == ARCH_RISCV64 ||
-                  machine == "i686" ||
-                  machine == "i386" ||
-                  machine == "arm64");  // macOS reports arm64
+    bool known = (machine == ARCH_X86_64 || machine == ARCH_AARCH64 || machine == ARCH_PPC64LE ||
+                  machine == ARCH_PPC64 || machine == ARCH_RISCV64 || machine == "i686" ||
+                  machine == "i386" || machine == "arm64"); // macOS reports arm64
     ASSERT(known);
 }
 
 // Test CPU info detection
 TEST(detect_cpu_info) {
     DetectedCpuInfo info = detect_cpu_info();
-    
+
     std::string machine = get_machine();
-    
+
     // Vendor should be set for x86_64
     if (machine == ARCH_X86_64) {
         ASSERT(!info.vendor.empty());
@@ -78,15 +76,15 @@ TEST(detect_cpu_info) {
 // Test host detection
 TEST(host_detection) {
     Microarchitecture uarch = host();
-    
+
     ASSERT(uarch.valid());
     ASSERT(!uarch.name().empty());
     std::cout << "(detected: " << uarch.name() << ") ";
-    
+
     // Should be in the correct family
     std::string machine = get_machine();
     std::string family = uarch.family();
-    
+
     if (machine == ARCH_X86_64 || machine == "i686" || machine == "i386") {
         ASSERT(family == ARCH_X86_64 || family == "x86" || family == "i686");
     } else if (machine == ARCH_AARCH64 || machine == "arm64") {
@@ -104,10 +102,10 @@ TEST(host_detection) {
 TEST(compatible_microarchitectures) {
     DetectedCpuInfo info = detect_cpu_info();
     auto compatible = compatible_microarchitectures(info);
-    
+
     ASSERT(!compatible.empty());
     std::cout << "(found " << compatible.size() << " compatible) ";
-    
+
     // All compatible targets should be valid
     for (const auto* target : compatible) {
         ASSERT(target != nullptr);
@@ -118,7 +116,7 @@ TEST(compatible_microarchitectures) {
 // Test brand string (if available)
 TEST(brand_string) {
     auto brand = brand_string();
-    
+
     if (brand.has_value()) {
         ASSERT(!brand->empty());
         std::cout << "(brand: " << *brand << ") ";
@@ -132,7 +130,7 @@ TEST(host_is_compatible) {
     DetectedCpuInfo info = detect_cpu_info();
     auto compatible = compatible_microarchitectures(info);
     Microarchitecture uarch = host();
-    
+
     bool found = false;
     for (const auto* target : compatible) {
         if (target->name() == uarch.name()) {
@@ -140,7 +138,7 @@ TEST(host_is_compatible) {
             break;
         }
     }
-    
+
     // Host should be one of the compatible architectures
     // (or be the generic one if nothing else matched)
     ASSERT(found || uarch.vendor() == "generic");
@@ -149,13 +147,13 @@ TEST(host_is_compatible) {
 // Test optimization flags for detected host
 TEST(host_optimization_flags) {
     Microarchitecture uarch = host();
-    
+
     // Try to get flags for common compilers
     std::string gcc_flags = uarch.optimization_flags("gcc", "10.0");
     std::string clang_flags = uarch.optimization_flags("clang", "12.0");
-    
+
     std::cout << "(gcc flags: " << (gcc_flags.empty() ? "none" : gcc_flags) << ") ";
-    
+
     // Flags should not be empty for x86_64 targets
     std::string machine = get_machine();
     if (machine == ARCH_X86_64 && uarch.vendor() != "generic") {
@@ -167,7 +165,7 @@ TEST(host_optimization_flags) {
 TEST(host_features) {
     Microarchitecture uarch = host();
     std::string machine = get_machine();
-    
+
     if (machine == ARCH_X86_64) {
         // All modern x86_64 CPUs should have these
         // Note: generic x86_64 has no features
@@ -185,7 +183,7 @@ TEST(host_features) {
 int main() {
     std::cout << "=== archspec_cpp Detection Tests ===" << std::endl;
     std::cout << std::endl;
-    
+
     RUN_TEST(get_machine);
     RUN_TEST(detect_cpu_info);
     RUN_TEST(host_detection);
@@ -194,12 +192,11 @@ int main() {
     RUN_TEST(host_is_compatible);
     RUN_TEST(host_optimization_flags);
     RUN_TEST(host_features);
-    
+
     std::cout << std::endl;
     std::cout << "=== Results ===" << std::endl;
     std::cout << "Passed: " << tests_passed << std::endl;
     std::cout << "Failed: " << tests_failed << std::endl;
-    
+
     return tests_failed > 0 ? 1 : 0;
 }
-

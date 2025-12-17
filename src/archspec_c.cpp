@@ -20,7 +20,8 @@ static std::string join_features(const std::set<std::string>& features) {
     std::string result;
     bool first = true;
     for (const auto& f : features) {
-        if (!first) result += ",";
+        if (!first)
+            result += ",";
         result += f;
         first = false;
     }
@@ -38,10 +39,10 @@ static void ensure_initialized() {
         try {
             auto host_arch = archspec::host();
             s_host_name = host_arch.name();
-            
+
             auto info = archspec::detect_cpu_info();
             s_host_vendor = info.vendor;
-            
+
             // Cache target names
             const auto& db = archspec::MicroarchitectureDatabase::instance();
             s_target_names = db.all_names();
@@ -74,11 +75,13 @@ const char* archspec_host_vendor(void) {
 }
 
 char* archspec_get_features(const char* name) {
-    if (!name) return nullptr;
+    if (!name)
+        return nullptr;
     try {
         const auto& db = archspec::MicroarchitectureDatabase::instance();
         const auto* target = db.get(name);
-        if (!target) return nullptr;
+        if (!target)
+            return nullptr;
         return to_c_string(join_features(target->features()));
     } catch (...) {
         return nullptr;
@@ -86,14 +89,17 @@ char* archspec_get_features(const char* name) {
 }
 
 char* archspec_get_flags(const char* name, const char* compiler) {
-    if (!name || !compiler) return nullptr;
+    if (!name || !compiler)
+        return nullptr;
     try {
         const auto& db = archspec::MicroarchitectureDatabase::instance();
         const auto* target = db.get(name);
-        if (!target) return nullptr;
+        if (!target)
+            return nullptr;
         // Use empty version string to get default flags
         std::string flags = target->optimization_flags(compiler, "");
-        if (flags.empty()) return nullptr;
+        if (flags.empty())
+            return nullptr;
         return to_c_string(flags);
     } catch (...) {
         return nullptr;
@@ -101,12 +107,14 @@ char* archspec_get_flags(const char* name, const char* compiler) {
 }
 
 char* archspec_host_flags(const char* compiler) {
-    if (!compiler) return nullptr;
+    if (!compiler)
+        return nullptr;
     try {
         auto host_arch = archspec::host();
         // Use empty version string to get default flags
         std::string flags = host_arch.optimization_flags(compiler, "");
-        if (flags.empty()) return nullptr;
+        if (flags.empty())
+            return nullptr;
         return to_c_string(flags);
     } catch (...) {
         return nullptr;
@@ -114,11 +122,13 @@ char* archspec_host_flags(const char* compiler) {
 }
 
 int archspec_has_feature(const char* name, const char* feature) {
-    if (!name || !feature) return 0;
+    if (!name || !feature)
+        return 0;
     try {
         const auto& db = archspec::MicroarchitectureDatabase::instance();
         const auto* target = db.get(name);
-        if (!target) return 0;
+        if (!target)
+            return 0;
         return target->has_feature(feature) ? 1 : 0;
     } catch (...) {
         return 0;
@@ -126,7 +136,8 @@ int archspec_has_feature(const char* name, const char* feature) {
 }
 
 int archspec_host_has_feature(const char* feature) {
-    if (!feature) return 0;
+    if (!feature)
+        return 0;
     try {
         auto host_arch = archspec::host();
         return host_arch.has_feature(feature) ? 1 : 0;
@@ -142,12 +153,14 @@ size_t archspec_target_count(void) {
 
 const char* archspec_target_name(size_t index) {
     ensure_initialized();
-    if (index >= s_target_names.size()) return nullptr;
+    if (index >= s_target_names.size())
+        return nullptr;
     return s_target_names[index].c_str();
 }
 
 int archspec_target_exists(const char* name) {
-    if (!name) return 0;
+    if (!name)
+        return 0;
     try {
         const auto& db = archspec::MicroarchitectureDatabase::instance();
         return db.exists(name) ? 1 : 0;
@@ -161,4 +174,3 @@ void archspec_free(char* str) {
 }
 
 } // extern "C"
-

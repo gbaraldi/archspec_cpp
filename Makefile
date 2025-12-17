@@ -16,7 +16,7 @@ CXX ?= g++
 AR ?= ar
 
 # Base flags
-CXXFLAGS ?= -std=c++17 -Wall -Wextra -O2
+CXXFLAGS ?= -std=c++17 -Wall -Wextra -Werror -O2
 INCLUDES = -I./include -I./extern/json/single_include
 
 # Platform-specific settings
@@ -94,9 +94,10 @@ examples: $(EXAMPLE_BINARIES) $(BINDIR)/c_api_example$(EXE_EXT)
 $(BINDIR)/%$(EXE_EXT): $(EXAMPLEDIR)/%.cpp $(STATIC_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) $< -L$(LIBDIR) -l$(LIB_NAME) $(LDFLAGS) -o $@
 
-# C example needs special handling (link with C++ runtime)
+# C example - compile as C, link with C++ runtime
 $(BINDIR)/c_api_example$(EXE_EXT): $(EXAMPLEDIR)/c_api_example.c $(STATIC_LIB)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) $< -L$(LIBDIR) -l$(LIB_NAME) $(LDFLAGS) -o $@
+	$(CC) -Wall -Wextra -Werror -O2 $(INCLUDES) -c $< -o $(OBJDIR)/c_api_example.o
+	$(CXX) $(OBJDIR)/c_api_example.o -L$(LIBDIR) -l$(LIB_NAME) $(LDFLAGS) -o $@
 
 # Build tests
 tests: $(TEST_BINARIES)
@@ -168,5 +169,20 @@ regenerate-data:
 	@echo '#endif // ARCHSPEC_MICROARCHITECTURES_DATA_INC' >> $(SRCDIR)/microarchitectures_data.inc
 	@echo "Done!"
 
-.PHONY: all directories examples tests check run-examples clean install uninstall debug compile_commands regenerate-data
+# Source files for formatting
+FORMAT_SOURCES = $(shell find src include examples tests \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' -o -name '*.c' \) 2>/dev/null)
+
+# Format source code
+format:
+	@echo "Formatting source files..."
+	@for f in $(FORMAT_SOURCES); do clang-format -i "$$f"; done
+	@echo "Done!"
+
+# Check formatting (for CI)
+format-check:
+	@echo "Checking format..."
+	@for f in $(FORMAT_SOURCES); do clang-format --dry-run --Werror "$$f" || exit 1; done
+	@echo "Format OK!"
+
+.PHONY: all directories examples tests check run-examples clean install uninstall debug compile_commands regenerate-data format format-check
 

@@ -14,32 +14,35 @@ int tests_passed = 0;
 int tests_failed = 0;
 
 #define TEST(name) void test_##name()
-#define RUN_TEST(name) do { \
-    std::cout << "Running " #name "... "; \
-    try { \
-        test_##name(); \
-        std::cout << "PASSED" << std::endl; \
-        tests_passed++; \
-    } catch (const std::exception& e) { \
-        std::cout << "FAILED: " << e.what() << std::endl; \
-        tests_failed++; \
-    } catch (...) { \
-        std::cout << "FAILED: unknown exception" << std::endl; \
-        tests_failed++; \
-    } \
-} while(0)
+#define RUN_TEST(name)                                             \
+    do {                                                           \
+        std::cout << "Running " #name "... ";                      \
+        try {                                                      \
+            test_##name();                                         \
+            std::cout << "PASSED" << std::endl;                    \
+            tests_passed++;                                        \
+        } catch (const std::exception& e) {                        \
+            std::cout << "FAILED: " << e.what() << std::endl;      \
+            tests_failed++;                                        \
+        } catch (...) {                                            \
+            std::cout << "FAILED: unknown exception" << std::endl; \
+            tests_failed++;                                        \
+        }                                                          \
+    } while (0)
 
-#define ASSERT(cond) do { \
-    if (!(cond)) { \
-        throw std::runtime_error("Assertion failed: " #cond); \
-    } \
-} while(0)
+#define ASSERT(cond)                                              \
+    do {                                                          \
+        if (!(cond)) {                                            \
+            throw std::runtime_error("Assertion failed: " #cond); \
+        }                                                         \
+    } while (0)
 
-#define ASSERT_EQ(a, b) do { \
-    if ((a) != (b)) { \
-        throw std::runtime_error("Assertion failed: " #a " == " #b); \
-    } \
-} while(0)
+#define ASSERT_EQ(a, b)                                                  \
+    do {                                                                 \
+        if ((a) != (b)) {                                                \
+            throw std::runtime_error("Assertion failed: " #a " == " #b); \
+        }                                                                \
+    } while (0)
 
 // Test that database loads correctly
 TEST(database_loads) {
@@ -97,10 +100,10 @@ TEST(get_nonexistent) {
 TEST(ancestors_haswell) {
     const auto* target = get_target("haswell");
     ASSERT(target != nullptr);
-    
+
     auto ancestors = target->ancestors();
     ASSERT(ancestors.size() > 0);
-    
+
     // haswell should descend from x86_64
     bool has_x86_64 = false;
     for (const auto& a : ancestors) {
@@ -115,9 +118,9 @@ TEST(ancestors_haswell) {
 TEST(ancestors_zen4) {
     const auto* target = get_target("zen4");
     ASSERT(target != nullptr);
-    
+
     auto ancestors = target->ancestors();
-    
+
     // zen4 should descend from zen3
     bool has_zen3 = false;
     for (const auto& a : ancestors) {
@@ -179,7 +182,7 @@ TEST(comparison_subset) {
     const auto* haswell = get_target("haswell");
     ASSERT(x86_64 != nullptr);
     ASSERT(haswell != nullptr);
-    
+
     // x86_64 < haswell (x86_64 is ancestor of haswell)
     ASSERT(*x86_64 < *haswell);
     ASSERT(*x86_64 <= *haswell);
@@ -192,7 +195,7 @@ TEST(comparison_equality) {
     const auto* haswell2 = get_target("haswell");
     ASSERT(haswell1 != nullptr);
     ASSERT(haswell2 != nullptr);
-    
+
     // Same target should be equal
     ASSERT(*haswell1 == *haswell2);
     ASSERT(!(*haswell1 != *haswell2));
@@ -204,7 +207,7 @@ TEST(comparison_equality) {
 TEST(optimization_flags_gcc) {
     const auto* target = get_target("haswell");
     ASSERT(target != nullptr);
-    
+
     std::string flags = target->optimization_flags("gcc", "9.0");
     ASSERT(!flags.empty());
     // Should contain -march=haswell
@@ -214,7 +217,7 @@ TEST(optimization_flags_gcc) {
 TEST(optimization_flags_clang) {
     const auto* target = get_target("skylake");
     ASSERT(target != nullptr);
-    
+
     std::string flags = target->optimization_flags("clang", "10.0");
     ASSERT(!flags.empty());
 }
@@ -246,7 +249,7 @@ TEST(power_generation) {
     const auto* power9 = get_target("power9le");
     ASSERT(power9 != nullptr);
     ASSERT_EQ(power9->generation(), 9);
-    
+
     const auto* power10 = get_target("power10le");
     ASSERT(power10 != nullptr);
     ASSERT_EQ(power10->generation(), 10);
@@ -262,7 +265,7 @@ TEST(arm_cpu_part) {
 int main() {
     std::cout << "=== archspec_cpp Microarchitecture Tests ===" << std::endl;
     std::cout << std::endl;
-    
+
     // Database tests
     RUN_TEST(database_loads);
     RUN_TEST(get_x86_64);
@@ -271,42 +274,41 @@ int main() {
     RUN_TEST(get_aarch64);
     RUN_TEST(get_apple_m1);
     RUN_TEST(get_nonexistent);
-    
+
     // Ancestry tests
     RUN_TEST(ancestors_haswell);
     RUN_TEST(ancestors_zen4);
-    
+
     // Family tests
     RUN_TEST(family_haswell);
     RUN_TEST(family_m1);
     RUN_TEST(family_power9le);
-    
+
     // Generic tests
     RUN_TEST(generic_skylake);
-    
+
     // Feature tests
     RUN_TEST(has_feature_avx2);
     RUN_TEST(has_feature_alias);
-    
+
     // Comparison tests
     RUN_TEST(comparison_subset);
     RUN_TEST(comparison_equality);
-    
+
     // Compiler flags tests
     RUN_TEST(optimization_flags_gcc);
     RUN_TEST(optimization_flags_clang);
-    
+
     // Other tests
     RUN_TEST(generic_microarchitecture);
     RUN_TEST(iterate_all_targets);
     RUN_TEST(power_generation);
     RUN_TEST(arm_cpu_part);
-    
+
     std::cout << std::endl;
     std::cout << "=== Results ===" << std::endl;
     std::cout << "Passed: " << tests_passed << std::endl;
     std::cout << "Failed: " << tests_failed << std::endl;
-    
+
     return tests_failed > 0 ? 1 : 0;
 }
-

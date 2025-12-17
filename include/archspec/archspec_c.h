@@ -86,4 +86,3 @@ void archspec_free(char* str);
 #endif
 
 #endif /* ARCHSPEC_C_H */
-

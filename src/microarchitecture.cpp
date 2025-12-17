@@ -14,21 +14,17 @@
 namespace archspec {
 
 Microarchitecture::Microarchitecture(
-    const std::string& name,
-    const std::vector<std::string>& parents,
-    const std::string& vendor,
+    const std::string& name, const std::vector<std::string>& parents, const std::string& vendor,
     const std::set<std::string>& features,
-    const std::map<std::string, std::vector<CompilerEntry>>& compilers,
-    int generation,
-    const std::string& cpu_part
-) : name_(name),
-    parent_names_(parents),
-    vendor_(vendor),
-    features_(features),
-    compilers_(compilers),
-    generation_(generation),
-    cpu_part_(cpu_part)
-{
+    const std::map<std::string, std::vector<CompilerEntry>>& compilers, int generation,
+    const std::string& cpu_part)
+    : name_(name),
+      parent_names_(parents),
+      vendor_(vendor),
+      features_(features),
+      compilers_(compilers),
+      generation_(generation),
+      cpu_part_(cpu_part) {
     // ssse3 implies sse3; add it if not present
     if (features_.count("ssse3") && !features_.count("sse3")) {
         features_.insert("sse3");
@@ -40,7 +36,7 @@ bool Microarchitecture::has_feature(const std::string& feature) const {
     if (features_.count(feature)) {
         return true;
     }
-    
+
     // Check feature aliases
     const auto& db = MicroarchitectureDatabase::instance();
     const auto& aliases = db.feature_aliases();
@@ -52,7 +48,7 @@ bool Microarchitecture::has_feature(const std::string& feature) const {
             }
         }
     }
-    
+
     // Check family features
     const auto& family_feats = db.family_features();
     auto fit = family_feats.find(feature);
@@ -62,14 +58,14 @@ bool Microarchitecture::has_feature(const std::string& feature) const {
             return true;
         }
     }
-    
+
     return false;
 }
 
 std::vector<std::string> Microarchitecture::ancestors() const {
     std::vector<std::string> result;
     const auto& db = MicroarchitectureDatabase::instance();
-    
+
     for (const auto& parent_name : parent_names_) {
         result.push_back(parent_name);
         const auto* parent = db.get(parent_name);
@@ -82,19 +78,19 @@ std::vector<std::string> Microarchitecture::ancestors() const {
             }
         }
     }
-    
+
     return result;
 }
 
 std::string Microarchitecture::family() const {
     const auto& db = MicroarchitectureDatabase::instance();
     std::vector<std::string> roots;
-    
+
     // Check if this target has no parents
     if (parent_names_.empty()) {
         return name_;
     }
-    
+
     // Find all ancestors with no parents (roots)
     auto all_ancestors = ancestors();
     for (const auto& ancestor_name : all_ancestors) {
@@ -105,28 +101,28 @@ std::string Microarchitecture::family() const {
             }
         }
     }
-    
+
     // Should have exactly one root
     if (roots.size() == 1) {
         return roots[0];
     }
-    
+
     // Multiple roots - return first one (shouldn't happen normally)
     return roots.empty() ? name_ : roots[0];
 }
 
 std::string Microarchitecture::generic() const {
     const auto& db = MicroarchitectureDatabase::instance();
-    
+
     // Check if this is generic
     if (vendor_ == "generic") {
         return name_;
     }
-    
+
     // Find best generic ancestor
     std::string best_generic;
     size_t best_depth = 0;
-    
+
     auto all_ancestors = ancestors();
     for (const auto& ancestor_name : all_ancestors) {
         const auto* ancestor = db.get(ancestor_name);
@@ -138,7 +134,7 @@ std::string Microarchitecture::generic() const {
             }
         }
     }
-    
+
     return best_generic.empty() ? family() : best_generic;
 }
 
@@ -152,11 +148,8 @@ std::set<std::string> Microarchitecture::to_set() const {
 }
 
 bool Microarchitecture::operator==(const Microarchitecture& other) const {
-    return name_ == other.name_ &&
-           vendor_ == other.vendor_ &&
-           features_ == other.features_ &&
-           parent_names_ == other.parent_names_ &&
-           generation_ == other.generation_ &&
+    return name_ == other.name_ && vendor_ == other.vendor_ && features_ == other.features_ &&
+           parent_names_ == other.parent_names_ && generation_ == other.generation_ &&
            cpu_part_ == other.cpu_part_;
 }
 
@@ -167,18 +160,18 @@ bool Microarchitecture::operator!=(const Microarchitecture& other) const {
 bool Microarchitecture::operator<(const Microarchitecture& other) const {
     auto this_set = to_set();
     auto other_set = other.to_set();
-    
+
     // this < other means this_set is a proper subset of other_set
     if (this_set.size() >= other_set.size()) {
         return false;
     }
-    
+
     for (const auto& elem : this_set) {
         if (other_set.count(elem) == 0) {
             return false;
         }
     }
-    
+
     return true;
 }
 
@@ -219,8 +212,10 @@ int compare_versions(const std::vector<int>& a, const std::vector<int>& b) {
     for (size_t i = 0; i < max_len; ++i) {
         int va = (i < a.size()) ? a[i] : 0;
         int vb = (i < b.size()) ? b[i] : 0;
-        if (va < vb) return -1;
-        if (va > vb) return 1;
+        if (va < vb)
+            return -1;
+        if (va > vb)
+            return 1;
     }
     return 0;
 }
@@ -232,57 +227,58 @@ bool satisfies_version(const std::string& constraint, const std::string& version
         // No colon - exact match? (shouldn't happen in practice)
         return constraint == version;
     }
-    
+
     std::string min_ver = constraint.substr(0, colon_pos);
     std::string max_ver = constraint.substr(colon_pos + 1);
-    
+
     auto ver = parse_version(version);
-    
+
     if (!min_ver.empty()) {
         auto min = parse_version(min_ver);
         if (compare_versions(ver, min) < 0) {
             return false;
         }
     }
-    
+
     if (!max_ver.empty()) {
         auto max = parse_version(max_ver);
         if (compare_versions(ver, max) > 0) {
             return false;
         }
     }
-    
+
     return true;
 }
 
 } // anonymous namespace
 
-std::string Microarchitecture::optimization_flags(const std::string& compiler, const std::string& version) const {
+std::string Microarchitecture::optimization_flags(const std::string& compiler,
+                                                  const std::string& version) const {
     const auto& db = MicroarchitectureDatabase::instance();
-    
+
     // Check if we have info for this compiler
     auto it = compilers_.find(compiler);
     if (it != compilers_.end() && !it->second.empty()) {
         const auto& entries = it->second;
-        
+
         for (const auto& entry : entries) {
             if (satisfies_version(entry.versions, version)) {
                 // Format the flags
                 std::string flags = entry.flags;
                 std::string target_name = entry.name.empty() ? name_ : entry.name;
-                
+
                 // Replace {name} placeholder
                 size_t pos = 0;
                 while ((pos = flags.find("{name}", pos)) != std::string::npos) {
                     flags.replace(pos, 6, target_name);
                     pos += target_name.length();
                 }
-                
+
                 return flags;
             }
         }
     }
-    
+
     // Version not supported or no compiler info - try ancestors
     for (const auto& ancestor_name : ancestors()) {
         const auto* ancestor = db.get(ancestor_name);
@@ -293,7 +289,7 @@ std::string Microarchitecture::optimization_flags(const std::string& compiler, c
             }
         }
     }
-    
+
     return "";
 }
 
@@ -335,7 +331,7 @@ bool MicroarchitectureDatabase::load_from_file(const std::string& path) {
     if (!file.is_open()) {
         return false;
     }
-    
+
     std::stringstream buffer;
     buffer << file.rdbuf();
     return load_from_string(buffer.str());
@@ -344,7 +340,7 @@ bool MicroarchitectureDatabase::load_from_file(const std::string& path) {
 bool MicroarchitectureDatabase::load_from_json_internal(const void* json_ptr) {
     try {
         const nlohmann::json& j = *static_cast<const nlohmann::json*>(json_ptr);
-        
+
         // Parse microarchitectures
         if (j.contains("microarchitectures")) {
             const auto& uarchs = j["microarchitectures"];
@@ -352,21 +348,21 @@ bool MicroarchitectureDatabase::load_from_json_internal(const void* json_ptr) {
                 fill_target(it.key(), &it.value());
             }
         }
-        
+
         // Parse feature aliases
         if (j.contains("feature_aliases")) {
             const auto& aliases = j["feature_aliases"];
             for (auto it = aliases.begin(); it != aliases.end(); ++it) {
                 const auto& alias_data = it.value();
                 std::set<std::string> features;
-                
+
                 if (alias_data.contains("any_of")) {
                     for (const auto& f : alias_data["any_of"]) {
                         features.insert(f.get<std::string>());
                     }
                     feature_aliases_[it.key()] = features;
                 }
-                
+
                 if (alias_data.contains("families")) {
                     std::set<std::string> families;
                     for (const auto& f : alias_data["families"]) {
@@ -376,24 +372,25 @@ bool MicroarchitectureDatabase::load_from_json_internal(const void* json_ptr) {
                 }
             }
         }
-        
+
         // Parse conversions
         if (j.contains("conversions")) {
             const auto& conv = j["conversions"];
-            
+
             if (conv.contains("darwin_flags")) {
-                for (auto it = conv["darwin_flags"].begin(); it != conv["darwin_flags"].end(); ++it) {
+                for (auto it = conv["darwin_flags"].begin(); it != conv["darwin_flags"].end();
+                     ++it) {
                     darwin_flags_[it.key()] = it.value().get<std::string>();
                 }
             }
-            
+
             if (conv.contains("arm_vendors")) {
                 for (auto it = conv["arm_vendors"].begin(); it != conv["arm_vendors"].end(); ++it) {
                     arm_vendors_[it.key()] = it.value().get<std::string>();
                 }
             }
         }
-        
+
         loaded_ = true;
         return true;
     } catch (const std::exception& e) {
@@ -415,9 +412,9 @@ void MicroarchitectureDatabase::fill_target(const std::string& name, const void*
     if (targets_.count(name)) {
         return;
     }
-    
+
     const nlohmann::json& data = *static_cast<const nlohmann::json*>(json_ptr);
-    
+
     // First, recursively fill parents
     std::vector<std::string> parents;
     if (data.contains("from")) {
@@ -426,10 +423,10 @@ void MicroarchitectureDatabase::fill_target(const std::string& name, const void*
             parents.push_back(parent_name);
         }
     }
-    
+
     // Get vendor
     std::string vendor = data.value("vendor", "generic");
-    
+
     // Get features
     std::set<std::string> features;
     if (data.contains("features")) {
@@ -437,7 +434,7 @@ void MicroarchitectureDatabase::fill_target(const std::string& name, const void*
             features.insert(f.get<std::string>());
         }
     }
-    
+
     // Get compilers
     std::map<std::string, std::vector<CompilerEntry>> compilers;
     if (data.contains("compilers")) {
@@ -454,15 +451,16 @@ void MicroarchitectureDatabase::fill_target(const std::string& name, const void*
             compilers[it.key()] = entries;
         }
     }
-    
+
     // Get generation (for POWER)
     int generation = data.value("generation", 0);
-    
+
     // Get CPU part (for ARM)
     std::string cpu_part = data.value("cpupart", "");
-    
+
     // Create the microarchitecture
-    targets_[name] = Microarchitecture(name, parents, vendor, features, compilers, generation, cpu_part);
+    targets_[name] =
+        Microarchitecture(name, parents, vendor, features, compilers, generation, cpu_part);
 }
 
 void MicroarchitectureDatabase::load_embedded_data() {
@@ -470,4 +468,3 @@ void MicroarchitectureDatabase::load_embedded_data() {
 }
 
 } // namespace archspec
-
