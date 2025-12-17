@@ -4,11 +4,13 @@
 #define ARCHSPEC_MICROARCHITECTURE_HPP
 
 #include <string>
+#include <string_view>
 #include <vector>
 #include <set>
 #include <map>
 #include <memory>
 #include <functional>
+#include <optional>
 #include <cstdint>
 
 namespace archspec {
@@ -63,7 +65,7 @@ class Microarchitecture {
     }
 
     // Check if a feature is supported (includes aliases)
-    bool has_feature(const std::string& feature) const;
+    bool has_feature(std::string_view feature) const;
 
     // Get all ancestors (parents and their parents recursively)
     std::vector<std::string> ancestors() const;
@@ -83,7 +85,7 @@ class Microarchitecture {
     bool operator>=(const Microarchitecture& other) const;
 
     // Get optimization flags for a compiler
-    std::string optimization_flags(const std::string& compiler, const std::string& version) const;
+    std::string optimization_flags(std::string_view compiler, std::string_view version) const;
 
     // Convert to/from string representation
     std::string to_string() const {
@@ -117,11 +119,11 @@ class MicroarchitectureDatabase {
     // Get the singleton instance
     static MicroarchitectureDatabase& instance();
 
-    // Get a microarchitecture by name
-    const Microarchitecture* get(const std::string& name) const;
+    // Get a microarchitecture by name (returns nullopt if not found)
+    std::optional<std::reference_wrapper<const Microarchitecture>> get(std::string_view name) const;
 
     // Check if a microarchitecture exists
-    bool exists(const std::string& name) const;
+    bool exists(std::string_view name) const;
 
     // Get all known microarchitecture names
     std::vector<std::string> all_names() const;
@@ -132,8 +134,8 @@ class MicroarchitectureDatabase {
     }
 
     // Load from various formats
-    bool load_from_file(const std::string& path);
-    bool load_from_string(const std::string& json_data);
+    bool load_from_file(std::string_view path);
+    bool load_from_string(std::string_view json_data);
 
     // Get feature aliases
     const std::map<std::string, std::set<std::string>>& feature_aliases() const {
@@ -171,17 +173,17 @@ class MicroarchitectureDatabase {
     bool loaded_ = false;
 
     // Allow JSON parsing helper access to private members
-    friend bool load_json_into_database(MicroarchitectureDatabase& db,
-                                        const std::string& json_data);
+    friend bool load_json_into_database(MicroarchitectureDatabase& db, std::string_view json_data);
 };
 
 // Convenience function to get a microarchitecture by name
-inline const Microarchitecture* get_target(const std::string& name) {
+inline std::optional<std::reference_wrapper<const Microarchitecture>>
+get_target(std::string_view name) {
     return MicroarchitectureDatabase::instance().get(name);
 }
 
 // Create a generic microarchitecture with no features
-Microarchitecture generic_microarchitecture(const std::string& name);
+Microarchitecture generic_microarchitecture(std::string_view name);
 
 } // namespace archspec
 

@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
     };
 
     for (const auto& target_name : targets) {
-        const auto* target = archspec::get_target(target_name);
+        auto target = archspec::get_target(target_name);
 
         if (!target) {
             std::cout << target_name << ": NOT FOUND" << std::endl;
@@ -43,12 +43,12 @@ int main(int argc, char* argv[]) {
         }
 
         std::cout << "=== " << target_name << " ===" << std::endl;
-        std::cout << "  Vendor: " << target->vendor() << std::endl;
-        std::cout << "  Family: " << target->family() << std::endl;
+        std::cout << "  Vendor: " << target->get().vendor() << std::endl;
+        std::cout << "  Family: " << target->get().family() << std::endl;
         std::cout << std::endl;
 
         for (const auto& [compiler, version] : compilers) {
-            std::string flags = target->optimization_flags(compiler, version);
+            std::string flags = target->get().optimization_flags(compiler, version);
 
             std::cout << "  " << std::setw(12) << std::left << (compiler + " " + version + ":");
             if (flags.empty()) {

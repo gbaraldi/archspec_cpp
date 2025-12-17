@@ -66,9 +66,9 @@ std::string get_machine() {
     GetNativeSystemInfo(&sysInfo);
     switch (sysInfo.wProcessorArchitecture) {
     case PROCESSOR_ARCHITECTURE_AMD64:
-        return ARCH_X86_64;
+        return std::string(ARCH_X86_64);
     case PROCESSOR_ARCHITECTURE_ARM64:
-        return ARCH_AARCH64;
+        return std::string(ARCH_AARCH64);
     case PROCESSOR_ARCHITECTURE_INTEL:
         return "i686";
     default:
@@ -80,13 +80,13 @@ std::string get_machine() {
     size_t size = sizeof(brand);
     if (sysctlbyname("machdep.cpu.brand_string", brand, &size, nullptr, 0) == 0) {
         if (std::string(brand).find("Apple") != std::string::npos)
-            return ARCH_AARCH64;
+            return std::string(ARCH_AARCH64);
     }
     struct utsname uts;
     if (uname(&uts) == 0) {
         std::string machine = uts.machine;
         if (machine == "arm64")
-            return ARCH_AARCH64;
+            return std::string(ARCH_AARCH64);
         return machine;
     }
     return "unknown";
@@ -95,9 +95,9 @@ std::string get_machine() {
     if (uname(&uts) == 0) {
         std::string machine = uts.machine;
         if (machine == "arm64")
-            return ARCH_AARCH64;
+            return std::string(ARCH_AARCH64);
         if (machine == "amd64")
-            return ARCH_X86_64;
+            return std::string(ARCH_X86_64);
         return machine;
     }
     return "unknown";
@@ -378,7 +378,7 @@ std::optional<std::string> brand_string() {
 
 namespace compatibility {
 
-static bool is_in_family(const Microarchitecture& target, const std::string& family_name) {
+static bool is_in_family(const Microarchitecture& target, std::string_view family_name) {
     if (target.name() == family_name)
         return true;
     for (const auto& ancestor : target.ancestors()) {
@@ -416,11 +416,11 @@ bool check_aarch64(const DetectedCpuInfo& info, const Microarchitecture& target)
 
 #if defined(__APPLE__)
     if (!info.name.empty()) {
-        const auto* model = MicroarchitectureDatabase::instance().get(info.name);
+        auto model = MicroarchitectureDatabase::instance().get(info.name);
         if (model) {
             if (target.name() == info.name)
                 return true;
-            for (const auto& ancestor : model->ancestors()) {
+            for (const auto& ancestor : model->get().ancestors()) {
                 if (ancestor == target.name())
                     return true;
             }
@@ -446,7 +446,7 @@ bool check_riscv64(const DetectedCpuInfo& info, const Microarchitecture& target)
 } // namespace compatibility
 
 std::vector<const Microarchitecture*> compatible_microarchitectures(const DetectedCpuInfo& info,
-                                                                    const std::string& arch) {
+                                                                    std::string_view arch) {
     std::vector<const Microarchitecture*> result;
     const auto& db = MicroarchitectureDatabase::instance();
 
@@ -460,8 +460,8 @@ std::vector<const Microarchitecture*> compatible_microarchitectures(const Detect
     else if (arch == ARCH_RISCV64)
         checker = compatibility::check_riscv64;
     else {
-        if (const auto* generic = db.get(arch))
-            result.push_back(generic);
+        if (auto generic = db.get(arch))
+            result.push_back(&generic->get());
         return result;
     }
 
@@ -471,8 +471,8 @@ std::vector<const Microarchitecture*> compatible_microarchitectures(const Detect
     }
 
     if (result.empty()) {
-        if (const auto* generic = db.get(arch))
-            result.push_back(generic);
+        if (auto generic = db.get(arch))
+            result.push_back(&generic->get());
     }
 
     return result;

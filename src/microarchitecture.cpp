@@ -31,20 +31,21 @@ Microarchitecture::Microarchitecture(
     }
 }
 
-bool Microarchitecture::has_feature(const std::string& feature) const {
-    if (features_.count(feature))
+bool Microarchitecture::has_feature(std::string_view feature) const {
+    std::string feature_str(feature);
+    if (features_.count(feature_str))
         return true;
 
     const auto& db = MicroarchitectureDatabase::instance();
 
-    if (auto it = db.feature_aliases().find(feature); it != db.feature_aliases().end()) {
+    if (auto it = db.feature_aliases().find(feature_str); it != db.feature_aliases().end()) {
         for (const auto& aliased : it->second) {
             if (features_.count(aliased))
                 return true;
         }
     }
 
-    if (auto it = db.family_features().find(feature); it != db.family_features().end()) {
+    if (auto it = db.family_features().find(feature_str); it != db.family_features().end()) {
         if (it->second.count(family()))
             return true;
     }
@@ -61,8 +62,8 @@ std::vector<std::string> Microarchitecture::ancestors() const {
         result.push_back(parent_name);
 
     for (const auto& parent_name : parent_names_) {
-        if (const auto* parent = db.get(parent_name)) {
-            for (const auto& ancestor : parent->ancestors()) {
+        if (auto parent = db.get(parent_name)) {
+            for (const auto& ancestor : parent->get().ancestors()) {
                 if (std::find(result.begin(), result.end(), ancestor) == result.end())
                     result.push_back(ancestor);
             }
@@ -80,8 +81,8 @@ std::string Microarchitecture::family() const {
     std::vector<std::string> roots;
 
     for (const auto& ancestor_name : ancestors()) {
-        if (const auto* ancestor = db.get(ancestor_name)) {
-            if (ancestor->parent_names().empty()) {
+        if (auto ancestor = db.get(ancestor_name)) {
+            if (ancestor->get().parent_names().empty()) {
                 if (std::find(roots.begin(), roots.end(), ancestor_name) == roots.end())
                     roots.push_back(ancestor_name);
             }
@@ -103,9 +104,9 @@ std::string Microarchitecture::generic() const {
     size_t best_depth = 0;
 
     for (const auto& ancestor_name : ancestors()) {
-        if (const auto* ancestor = db.get(ancestor_name)) {
-            if (ancestor->vendor() == "generic") {
-                size_t depth = ancestor->ancestors().size();
+        if (auto ancestor = db.get(ancestor_name)) {
+            if (ancestor->get().vendor() == "generic") {
+                size_t depth = ancestor->get().ancestors().size();
                 if (best_generic.empty() || depth > best_depth) {
                     best_generic = ancestor_name;
                     best_depth = depth;
@@ -202,7 +203,7 @@ int compare_versions(const std::vector<int>& a, const std::vector<int>& b) {
 }
 
 // Check if version satisfies a version constraint like "4.9:" or "3.9:11.1"
-bool satisfies_version(const std::string& constraint, const std::string& version) {
+bool satisfies_version(const std::string& constraint, std::string_view version) {
     size_t colon_pos = constraint.find(':');
     if (colon_pos == std::string::npos) {
         // No colon - exact match? (shouldn't happen in practice)
@@ -212,7 +213,7 @@ bool satisfies_version(const std::string& constraint, const std::string& version
     std::string min_ver = constraint.substr(0, colon_pos);
     std::string max_ver = constraint.substr(colon_pos + 1);
 
-    auto ver = parse_version(version);
+    auto ver = parse_version(std::string(version));
 
     if (!min_ver.empty()) {
         auto min = parse_version(min_ver);
@@ -233,12 +234,13 @@ bool satisfies_version(const std::string& constraint, const std::string& version
 
 } // anonymous namespace
 
-std::string Microarchitecture::optimization_flags(const std::string& compiler,
-                                                  const std::string& version) const {
+std::string Microarchitecture::optimization_flags(std::string_view compiler,
+                                                  std::string_view version) const {
     const auto& db = MicroarchitectureDatabase::instance();
 
     // Check if we have info for this compiler
-    auto it = compilers_.find(compiler);
+    std::string compiler_str(compiler);
+    auto it = compilers_.find(compiler_str);
     if (it != compilers_.end() && !it->second.empty()) {
         const auto& entries = it->second;
 
@@ -262,9 +264,9 @@ std::string Microarchitecture::optimization_flags(const std::string& compiler,
 
     // Version not supported or no compiler info - try ancestors
     for (const auto& ancestor_name : ancestors()) {
-        const auto* ancestor = db.get(ancestor_name);
+        auto ancestor = db.get(ancestor_name);
         if (ancestor) {
-            std::string result = ancestor->optimization_flags(compiler, version);
+            std::string result = ancestor->get().optimization_flags(compiler, version);
             if (!result.empty()) {
                 return result;
             }
@@ -274,8 +276,8 @@ std::string Microarchitecture::optimization_flags(const std::string& compiler,
     return "";
 }
 
-Microarchitecture generic_microarchitecture(const std::string& name) {
-    return Microarchitecture(name, {}, "generic", {}, {}, 0, "");
+Microarchitecture generic_microarchitecture(std::string_view name) {
+    return Microarchitecture(std::string(name), {}, "generic", {}, {}, 0, "");
 }
 
 // MicroarchitectureDatabase implementation
@@ -289,13 +291,17 @@ MicroarchitectureDatabase::MicroarchitectureDatabase() {
     load_embedded_data();
 }
 
-const Microarchitecture* MicroarchitectureDatabase::get(const std::string& name) const {
-    auto it = targets_.find(name);
-    return (it != targets_.end()) ? &it->second : nullptr;
+std::optional<std::reference_wrapper<const Microarchitecture>>
+MicroarchitectureDatabase::get(std::string_view name) const {
+    std::string name_str(name);
+    auto it = targets_.find(name_str);
+    if (it != targets_.end())
+        return std::cref(it->second);
+    return std::nullopt;
 }
 
-bool MicroarchitectureDatabase::exists(const std::string& name) const {
-    return targets_.count(name) > 0;
+bool MicroarchitectureDatabase::exists(std::string_view name) const {
+    return targets_.count(std::string(name)) > 0;
 }
 
 std::vector<std::string> MicroarchitectureDatabase::all_names() const {
@@ -307,8 +313,9 @@ std::vector<std::string> MicroarchitectureDatabase::all_names() const {
     return names;
 }
 
-bool MicroarchitectureDatabase::load_from_file(const std::string& path) {
-    std::ifstream file(path);
+bool MicroarchitectureDatabase::load_from_file(std::string_view path) {
+    std::string path_str(path);
+    std::ifstream file(path_str);
     if (!file.is_open()) {
         return false;
     }
@@ -356,7 +363,7 @@ void fill_target_from_json(std::map<std::string, Microarchitecture>& targets,
 
 } // anonymous namespace
 
-bool load_json_into_database(MicroarchitectureDatabase& db, const std::string& json_data) {
+bool load_json_into_database(MicroarchitectureDatabase& db, std::string_view json_data) {
     nlohmann::json j = nlohmann::json::parse(json_data, nullptr, false);
     if (j.is_discarded())
         return false;
@@ -400,7 +407,7 @@ bool load_json_into_database(MicroarchitectureDatabase& db, const std::string& j
     return true;
 }
 
-bool MicroarchitectureDatabase::load_from_string(const std::string& json_data) {
+bool MicroarchitectureDatabase::load_from_string(std::string_view json_data) {
     return load_json_into_database(*this, json_data);
 }
 

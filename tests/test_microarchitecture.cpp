@@ -19,60 +19,60 @@ TEST(database_loads) {
 
 // Test getting specific targets
 TEST(get_x86_64) {
-    const auto* target = get_target("x86_64");
-    ASSERT(target != nullptr);
-    ASSERT_EQ(target->name(), "x86_64");
-    ASSERT_EQ(target->vendor(), "generic");
+    auto target = get_target("x86_64");
+    ASSERT(target.has_value());
+    ASSERT_EQ(target->get().name(), "x86_64");
+    ASSERT_EQ(target->get().vendor(), "generic");
     TEST_PASS();
 }
 
 TEST(get_haswell) {
-    const auto* target = get_target("haswell");
-    ASSERT(target != nullptr);
-    ASSERT_EQ(target->name(), "haswell");
-    ASSERT_EQ(target->vendor(), "GenuineIntel");
-    ASSERT(target->features().count("avx2") > 0);
-    ASSERT(target->features().count("fma") > 0);
+    auto target = get_target("haswell");
+    ASSERT(target.has_value());
+    ASSERT_EQ(target->get().name(), "haswell");
+    ASSERT_EQ(target->get().vendor(), "GenuineIntel");
+    ASSERT(target->get().features().count("avx2") > 0);
+    ASSERT(target->get().features().count("fma") > 0);
     TEST_PASS();
 }
 
 TEST(get_zen3) {
-    const auto* target = get_target("zen3");
-    ASSERT(target != nullptr);
-    ASSERT_EQ(target->name(), "zen3");
-    ASSERT_EQ(target->vendor(), "AuthenticAMD");
-    ASSERT(target->features().count("avx2") > 0);
+    auto target = get_target("zen3");
+    ASSERT(target.has_value());
+    ASSERT_EQ(target->get().name(), "zen3");
+    ASSERT_EQ(target->get().vendor(), "AuthenticAMD");
+    ASSERT(target->get().features().count("avx2") > 0);
     TEST_PASS();
 }
 
 TEST(get_aarch64) {
-    const auto* target = get_target("aarch64");
-    ASSERT(target != nullptr);
-    ASSERT_EQ(target->name(), "aarch64");
-    ASSERT_EQ(target->vendor(), "generic");
+    auto target = get_target("aarch64");
+    ASSERT(target.has_value());
+    ASSERT_EQ(target->get().name(), "aarch64");
+    ASSERT_EQ(target->get().vendor(), "generic");
     TEST_PASS();
 }
 
 TEST(get_apple_m1) {
-    const auto* target = get_target("m1");
-    ASSERT(target != nullptr);
-    ASSERT_EQ(target->name(), "m1");
-    ASSERT_EQ(target->vendor(), "Apple");
+    auto target = get_target("m1");
+    ASSERT(target.has_value());
+    ASSERT_EQ(target->get().name(), "m1");
+    ASSERT_EQ(target->get().vendor(), "Apple");
     TEST_PASS();
 }
 
 TEST(get_nonexistent) {
-    const auto* target = get_target("nonexistent_cpu_12345");
-    ASSERT(target == nullptr);
+    auto target = get_target("nonexistent_cpu_12345");
+    ASSERT(!target.has_value());
     TEST_PASS();
 }
 
 // Test ancestry
 TEST(ancestors_haswell) {
-    const auto* target = get_target("haswell");
-    ASSERT(target != nullptr);
+    auto target = get_target("haswell");
+    ASSERT(target.has_value());
 
-    auto ancestors = target->ancestors();
+    auto ancestors = target->get().ancestors();
     ASSERT(ancestors.size() > 0);
 
     // haswell should descend from x86_64
@@ -88,10 +88,10 @@ TEST(ancestors_haswell) {
 }
 
 TEST(ancestors_zen4) {
-    const auto* target = get_target("zen4");
-    ASSERT(target != nullptr);
+    auto target = get_target("zen4");
+    ASSERT(target.has_value());
 
-    auto ancestors = target->ancestors();
+    auto ancestors = target->get().ancestors();
 
     // zen4 should descend from zen3
     bool has_zen3 = false;
@@ -107,31 +107,31 @@ TEST(ancestors_zen4) {
 
 // Test family
 TEST(family_haswell) {
-    const auto* target = get_target("haswell");
-    ASSERT(target != nullptr);
-    ASSERT_EQ(target->family(), "x86_64");
+    auto target = get_target("haswell");
+    ASSERT(target.has_value());
+    ASSERT_EQ(target->get().family(), "x86_64");
     TEST_PASS();
 }
 
 TEST(family_m1) {
-    const auto* target = get_target("m1");
-    ASSERT(target != nullptr);
-    ASSERT_EQ(target->family(), "aarch64");
+    auto target = get_target("m1");
+    ASSERT(target.has_value());
+    ASSERT_EQ(target->get().family(), "aarch64");
     TEST_PASS();
 }
 
 TEST(family_power9le) {
-    const auto* target = get_target("power9le");
-    ASSERT(target != nullptr);
-    ASSERT_EQ(target->family(), "ppc64le");
+    auto target = get_target("power9le");
+    ASSERT(target.has_value());
+    ASSERT_EQ(target->get().family(), "ppc64le");
     TEST_PASS();
 }
 
 // Test generic
 TEST(generic_skylake) {
-    const auto* target = get_target("skylake");
-    ASSERT(target != nullptr);
-    std::string gen = target->generic();
+    auto target = get_target("skylake");
+    ASSERT(target.has_value());
+    std::string gen = target->get().generic();
     // Should be x86_64_v3 or similar generic target
     ASSERT(!gen.empty());
     TEST_PASS();
@@ -139,57 +139,57 @@ TEST(generic_skylake) {
 
 // Test feature checking
 TEST(has_feature_avx2) {
-    const auto* target = get_target("haswell");
-    ASSERT(target != nullptr);
-    ASSERT(target->has_feature("avx2"));
-    ASSERT(target->has_feature("avx"));
-    ASSERT(target->has_feature("sse4_1"));
+    auto target = get_target("haswell");
+    ASSERT(target.has_value());
+    ASSERT(target->get().has_feature("avx2"));
+    ASSERT(target->get().has_feature("avx"));
+    ASSERT(target->get().has_feature("sse4_1"));
     TEST_PASS();
 }
 
 TEST(has_feature_alias) {
-    const auto* target = get_target("haswell");
-    ASSERT(target != nullptr);
+    auto target = get_target("haswell");
+    ASSERT(target.has_value());
     // sse4.1 is an alias for sse4_1
-    ASSERT(target->has_feature("sse4.1"));
+    ASSERT(target->get().has_feature("sse4.1"));
     TEST_PASS();
 }
 
 // Test comparison operators
 TEST(comparison_subset) {
-    const auto* x86_64 = get_target("x86_64");
-    const auto* haswell = get_target("haswell");
-    ASSERT(x86_64 != nullptr);
-    ASSERT(haswell != nullptr);
+    auto x86_64 = get_target("x86_64");
+    auto haswell = get_target("haswell");
+    ASSERT(x86_64.has_value());
+    ASSERT(haswell.has_value());
 
     // x86_64 < haswell (x86_64 is ancestor of haswell)
-    ASSERT(*x86_64 < *haswell);
-    ASSERT(*x86_64 <= *haswell);
-    ASSERT(!(*haswell < *x86_64));
-    ASSERT(*haswell > *x86_64);
+    ASSERT(x86_64->get() < haswell->get());
+    ASSERT(x86_64->get() <= haswell->get());
+    ASSERT(!(haswell->get() < x86_64->get()));
+    ASSERT(haswell->get() > x86_64->get());
     TEST_PASS();
 }
 
 TEST(comparison_equality) {
-    const auto* haswell1 = get_target("haswell");
-    const auto* haswell2 = get_target("haswell");
-    ASSERT(haswell1 != nullptr);
-    ASSERT(haswell2 != nullptr);
+    auto haswell1 = get_target("haswell");
+    auto haswell2 = get_target("haswell");
+    ASSERT(haswell1.has_value());
+    ASSERT(haswell2.has_value());
 
     // Same target should be equal
-    ASSERT(*haswell1 == *haswell2);
-    ASSERT(!(*haswell1 != *haswell2));
-    ASSERT(*haswell1 <= *haswell2);
-    ASSERT(*haswell1 >= *haswell2);
+    ASSERT(haswell1->get() == haswell2->get());
+    ASSERT(!(haswell1->get() != haswell2->get()));
+    ASSERT(haswell1->get() <= haswell2->get());
+    ASSERT(haswell1->get() >= haswell2->get());
     TEST_PASS();
 }
 
 // Test compiler flags
 TEST(optimization_flags_gcc) {
-    const auto* target = get_target("haswell");
-    ASSERT(target != nullptr);
+    auto target = get_target("haswell");
+    ASSERT(target.has_value());
 
-    std::string flags = target->optimization_flags("gcc", "9.0");
+    std::string flags = target->get().optimization_flags("gcc", "9.0");
     ASSERT(!flags.empty());
     // Should contain -march=haswell
     ASSERT(flags.find("haswell") != std::string::npos);
@@ -197,10 +197,10 @@ TEST(optimization_flags_gcc) {
 }
 
 TEST(optimization_flags_clang) {
-    const auto* target = get_target("skylake");
-    ASSERT(target != nullptr);
+    auto target = get_target("skylake");
+    ASSERT(target.has_value());
 
-    std::string flags = target->optimization_flags("clang", "10.0");
+    std::string flags = target->get().optimization_flags("clang", "10.0");
     ASSERT(!flags.empty());
     TEST_PASS();
 }
@@ -231,21 +231,21 @@ TEST(iterate_all_targets) {
 
 // Test Power generation
 TEST(power_generation) {
-    const auto* power9 = get_target("power9le");
-    ASSERT(power9 != nullptr);
-    ASSERT_EQ(power9->generation(), 9);
+    auto power9 = get_target("power9le");
+    ASSERT(power9.has_value());
+    ASSERT_EQ(power9->get().generation(), 9);
 
-    const auto* power10 = get_target("power10le");
-    ASSERT(power10 != nullptr);
-    ASSERT_EQ(power10->generation(), 10);
+    auto power10 = get_target("power10le");
+    ASSERT(power10.has_value());
+    ASSERT_EQ(power10->get().generation(), 10);
     TEST_PASS();
 }
 
 // Test ARM CPU part
 TEST(arm_cpu_part) {
-    const auto* n1 = get_target("neoverse_n1");
-    ASSERT(n1 != nullptr);
-    ASSERT(!n1->cpu_part().empty());
+    auto n1 = get_target("neoverse_n1");
+    ASSERT(n1.has_value());
+    ASSERT(!n1->get().cpu_part().empty());
     TEST_PASS();
 }
 

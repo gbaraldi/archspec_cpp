@@ -5,17 +5,18 @@
 
 #include "microarchitecture.hpp"
 #include <string>
+#include <string_view>
 #include <set>
 #include <optional>
 
 namespace archspec {
 
 // Architecture constants
-constexpr const char* ARCH_X86_64 = "x86_64";
-constexpr const char* ARCH_AARCH64 = "aarch64";
-constexpr const char* ARCH_PPC64LE = "ppc64le";
-constexpr const char* ARCH_PPC64 = "ppc64";
-constexpr const char* ARCH_RISCV64 = "riscv64";
+constexpr std::string_view ARCH_X86_64 = "x86_64";
+constexpr std::string_view ARCH_AARCH64 = "aarch64";
+constexpr std::string_view ARCH_PPC64LE = "ppc64le";
+constexpr std::string_view ARCH_PPC64 = "ppc64";
+constexpr std::string_view ARCH_RISCV64 = "riscv64";
 
 /**
  * Information detected about the host CPU
@@ -62,7 +63,7 @@ std::vector<const Microarchitecture*> compatible_microarchitectures(const Detect
  * Uses the specified architecture string
  */
 std::vector<const Microarchitecture*> compatible_microarchitectures(const DetectedCpuInfo& info,
-                                                                    const std::string& arch);
+                                                                    std::string_view arch);
 
 /**
  * Compare microarchitectures for sorting: prefers more ancestors and more features

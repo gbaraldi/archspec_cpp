@@ -71,21 +71,21 @@ char* archspec_get_features(const char* name) {
     if (!name)
         return nullptr;
     const auto& db = archspec::MicroarchitectureDatabase::instance();
-    const auto* target = db.get(name);
+    auto target = db.get(name);
     if (!target)
         return nullptr;
-    return to_c_string(join_features(target->features()));
+    return to_c_string(join_features(target->get().features()));
 }
 
 char* archspec_get_flags(const char* name, const char* compiler) {
     if (!name || !compiler)
         return nullptr;
     const auto& db = archspec::MicroarchitectureDatabase::instance();
-    const auto* target = db.get(name);
+    auto target = db.get(name);
     if (!target)
         return nullptr;
     // Use empty version string to get default flags
-    std::string flags = target->optimization_flags(compiler, "");
+    std::string flags = target->get().optimization_flags(compiler, "");
     if (flags.empty())
         return nullptr;
     return to_c_string(flags);
@@ -106,10 +106,10 @@ int archspec_has_feature(const char* name, const char* feature) {
     if (!name || !feature)
         return 0;
     const auto& db = archspec::MicroarchitectureDatabase::instance();
-    const auto* target = db.get(name);
+    auto target = db.get(name);
     if (!target)
         return 0;
-    return target->has_feature(feature) ? 1 : 0;
+    return target->get().has_feature(feature) ? 1 : 0;
 }
 
 int archspec_host_has_feature(const char* feature) {
