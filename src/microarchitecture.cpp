@@ -66,8 +66,13 @@ std::vector<std::string> Microarchitecture::ancestors() const {
     std::vector<std::string> result;
     const auto& db = MicroarchitectureDatabase::instance();
 
+    // First add all direct parents (matching Python's breadth-first approach)
     for (const auto& parent_name : parent_names_) {
         result.push_back(parent_name);
+    }
+
+    // Then add each parent's ancestors
+    for (const auto& parent_name : parent_names_) {
         const auto* parent = db.get(parent_name);
         if (parent) {
             auto parent_ancestors = parent->ancestors();

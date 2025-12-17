@@ -166,6 +166,12 @@ DetectedCpuInfo detect_from_proc_cpuinfo() {
                 }
             }
         }
+
+        // ssse3 implies sse3; on Linux sse3 is reported as "pni" in /proc/cpuinfo,
+        // so add sse3 when ssse3 is present (matching archspec Python behavior)
+        if (info.features.count("ssse3")) {
+            info.features.insert("sse3");
+        }
     } else if (arch == ARCH_AARCH64) {
         // Get vendor from CPU implementer
         if (data.count("CPU implementer")) {
