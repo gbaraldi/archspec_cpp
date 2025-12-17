@@ -22,6 +22,10 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
+// PROCESSOR_ARCHITECTURE_ARM64 may not be defined in older SDKs/MinGW
+#ifndef PROCESSOR_ARCHITECTURE_ARM64
+#define PROCESSOR_ARCHITECTURE_ARM64 12
+#endif
 #endif
 
 #if defined(__FreeBSD__)
@@ -33,8 +37,8 @@ namespace archspec {
 
 namespace {
 
-// Helper to split string
-std::vector<std::string> split(const std::string& s, char delimiter) {
+// Helper to split string (used on Linux/macOS)
+[[maybe_unused]] std::vector<std::string> split(const std::string& s, char delimiter) {
     std::vector<std::string> tokens;
     std::string token;
     std::istringstream stream(s);
@@ -51,8 +55,8 @@ std::vector<std::string> split(const std::string& s, char delimiter) {
     return tokens;
 }
 
-// Helper to convert string to lowercase
-std::string to_lower(const std::string& s) {
+// Helper to convert string to lowercase (used on macOS)
+[[maybe_unused]] std::string to_lower(const std::string& s) {
     std::string result = s;
     std::transform(result.begin(), result.end(), result.begin(), ::tolower);
     return result;
@@ -409,8 +413,6 @@ bool check_x86_64(const DetectedCpuInfo& info, const Microarchitecture& target) 
 }
 
 bool check_aarch64(const DetectedCpuInfo& info, const Microarchitecture& target) {
-    const auto& db = MicroarchitectureDatabase::instance();
-
     // Generic targets other than aarch64 itself aren't compatible
     if (target.vendor() == "generic" && target.name() != ARCH_AARCH64) {
         return false;
@@ -438,6 +440,7 @@ bool check_aarch64(const DetectedCpuInfo& info, const Microarchitecture& target)
 #if defined(__APPLE__)
     // On macOS, we can match by name for Apple Silicon
     if (!info.name.empty()) {
+        const auto& db = MicroarchitectureDatabase::instance();
         const auto* model = db.get(info.name);
         if (model) {
             if (target.name() == info.name)
