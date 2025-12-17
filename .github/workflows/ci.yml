@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+        include:
+          - compiler: gcc
+            cc: gcc
+            cxx: g++
+          - compiler: clang
+            cc: clang
+            cxx: clang++
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Build
+      env:
+        CC: ${{ matrix.cc }}
+        CXX: ${{ matrix.cxx }}
+      run: make
+
+    - name: Run tests
+      run: make check
+
+    - name: Run examples
+      run: make run-examples
+
+  build-macos:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [clang, gcc]
+        include:
+          - compiler: clang
+            cc: clang
+            cxx: clang++
+          - compiler: gcc
+            cc: gcc-13
+            cxx: g++-13
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Build
+      env:
+        CC: ${{ matrix.cc }}
+        CXX: ${{ matrix.cxx }}
+      run: make
+
+    - name: Run tests
+      run: make check
+
+    - name: Run examples
+      run: make run-examples
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Build (MinGW)
+      shell: bash
+      run: make CXX=g++ CC=gcc
+
+    - name: Run tests
+      shell: bash
+      run: make check
+
+    - name: Run examples
+      shell: bash
+      run: make run-examples
+
+  build-freebsd:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Build and test on FreeBSD
+      uses: vmactions/freebsd-vm@v1
+      with:
+        usesh: true
+        prepare: |
+          pkg install -y gmake
+        run: |
+          gmake CXX=clang++ CC=clang
+          gmake check
+          gmake run-examples
+
+  # Verify the library compiles with different C++ standards
+  standards:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        std: [17, 20, 23]
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Build with C++${{ matrix.std }}
+      run: make CXXFLAGS="-std=c++${{ matrix.std }} -Wall -Wextra -O2"
+
+    - name: Run tests
+      run: make check
+
+    - name: Run examples
+      run: make run-examples
+
