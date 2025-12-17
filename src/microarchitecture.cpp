@@ -196,11 +196,13 @@ std::vector<int> parse_version(const std::string& version) {
     std::string part;
     while (std::getline(ss, part, '.')) {
         if (!part.empty()) {
-            try {
-                result.push_back(std::stoi(part));
-            } catch (...) {
-                // Ignore non-numeric parts
+            // Parse without exceptions
+            char* end = nullptr;
+            long val = std::strtol(part.c_str(), &end, 10);
+            if (end != part.c_str()) {
+                result.push_back(static_cast<int>(val));
             }
+            // Ignore non-numeric parts
         }
     }
     return result;
@@ -338,73 +340,71 @@ bool MicroarchitectureDatabase::load_from_file(const std::string& path) {
 }
 
 bool MicroarchitectureDatabase::load_from_json_internal(const void* json_ptr) {
-    try {
-        const nlohmann::json& j = *static_cast<const nlohmann::json*>(json_ptr);
+    const nlohmann::json& j = *static_cast<const nlohmann::json*>(json_ptr);
 
-        // Parse microarchitectures
-        if (j.contains("microarchitectures")) {
-            const auto& uarchs = j["microarchitectures"];
-            for (auto it = uarchs.begin(); it != uarchs.end(); ++it) {
-                fill_target(it.key(), &it.value());
-            }
-        }
-
-        // Parse feature aliases
-        if (j.contains("feature_aliases")) {
-            const auto& aliases = j["feature_aliases"];
-            for (auto it = aliases.begin(); it != aliases.end(); ++it) {
-                const auto& alias_data = it.value();
-                std::set<std::string> features;
-
-                if (alias_data.contains("any_of")) {
-                    for (const auto& f : alias_data["any_of"]) {
-                        features.insert(f.get<std::string>());
-                    }
-                    feature_aliases_[it.key()] = features;
-                }
-
-                if (alias_data.contains("families")) {
-                    std::set<std::string> families;
-                    for (const auto& f : alias_data["families"]) {
-                        families.insert(f.get<std::string>());
-                    }
-                    family_features_[it.key()] = families;
-                }
-            }
-        }
-
-        // Parse conversions
-        if (j.contains("conversions")) {
-            const auto& conv = j["conversions"];
-
-            if (conv.contains("darwin_flags")) {
-                for (auto it = conv["darwin_flags"].begin(); it != conv["darwin_flags"].end();
-                     ++it) {
-                    darwin_flags_[it.key()] = it.value().get<std::string>();
-                }
-            }
-
-            if (conv.contains("arm_vendors")) {
-                for (auto it = conv["arm_vendors"].begin(); it != conv["arm_vendors"].end(); ++it) {
-                    arm_vendors_[it.key()] = it.value().get<std::string>();
-                }
-            }
-        }
-
-        loaded_ = true;
-        return true;
-    } catch (const std::exception& e) {
+    if (j.is_discarded()) {
         return false;
     }
+
+    // Parse microarchitectures
+    if (j.contains("microarchitectures")) {
+        const auto& uarchs = j["microarchitectures"];
+        for (auto it = uarchs.begin(); it != uarchs.end(); ++it) {
+            fill_target(it.key(), &it.value());
+        }
+    }
+
+    // Parse feature aliases
+    if (j.contains("feature_aliases")) {
+        const auto& aliases = j["feature_aliases"];
+        for (auto it = aliases.begin(); it != aliases.end(); ++it) {
+            const auto& alias_data = it.value();
+            std::set<std::string> features;
+
+            if (alias_data.contains("any_of")) {
+                for (const auto& f : alias_data["any_of"]) {
+                    features.insert(f.get<std::string>());
+                }
+                feature_aliases_[it.key()] = features;
+            }
+
+            if (alias_data.contains("families")) {
+                std::set<std::string> families;
+                for (const auto& f : alias_data["families"]) {
+                    families.insert(f.get<std::string>());
+                }
+                family_features_[it.key()] = families;
+            }
+        }
+    }
+
+    // Parse conversions
+    if (j.contains("conversions")) {
+        const auto& conv = j["conversions"];
+
+        if (conv.contains("darwin_flags")) {
+            for (auto it = conv["darwin_flags"].begin(); it != conv["darwin_flags"].end(); ++it) {
+                darwin_flags_[it.key()] = it.value().get<std::string>();
+            }
+        }
+
+        if (conv.contains("arm_vendors")) {
+            for (auto it = conv["arm_vendors"].begin(); it != conv["arm_vendors"].end(); ++it) {
+                arm_vendors_[it.key()] = it.value().get<std::string>();
+            }
+        }
+    }
+
+    loaded_ = true;
+    return true;
 }
 
 bool MicroarchitectureDatabase::load_from_string(const std::string& json_data) {
-    try {
-        nlohmann::json j = nlohmann::json::parse(json_data);
-        return load_from_json_internal(&j);
-    } catch (const std::exception& e) {
+    nlohmann::json j = nlohmann::json::parse(json_data, nullptr, false);
+    if (j.is_discarded()) {
         return false;
     }
+    return load_from_json_internal(&j);
 }
 
 void MicroarchitectureDatabase::fill_target(const std::string& name, const void* json_ptr) {

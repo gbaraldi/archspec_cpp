@@ -105,7 +105,15 @@ std::string get_machine() {
 #else
     struct utsname uts;
     if (uname(&uts) == 0) {
-        return uts.machine;
+        std::string machine = uts.machine;
+        // Normalize architecture names
+        if (machine == "arm64") {
+            return ARCH_AARCH64;
+        }
+        if (machine == "amd64") {
+            return ARCH_X86_64;
+        }
+        return machine;
     }
     return "unknown";
 #endif
@@ -191,9 +199,12 @@ DetectedCpuInfo detect_from_proc_cpuinfo() {
             std::smatch match;
             std::string cpu_str = data["cpu"];
             if (std::regex_search(cpu_str, match, power_re)) {
-                try {
-                    info.generation = std::stoi(match[1].str());
-                } catch (...) {}
+                std::string gen_str = match[1].str();
+                char* end = nullptr;
+                long val = std::strtol(gen_str.c_str(), &end, 10);
+                if (end != gen_str.c_str()) {
+                    info.generation = static_cast<int>(val);
+                }
             }
         }
     } else if (arch == ARCH_RISCV64) {

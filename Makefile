@@ -15,8 +15,8 @@ endif
 CXX ?= g++
 AR ?= ar
 
-# Base flags
-CXXFLAGS ?= -std=c++17 -Wall -Wextra -Werror -O2
+# Base flags (no exceptions/RTTI for smaller binaries)
+CXXFLAGS ?= -std=c++17 -Wall -Wextra -Werror -O2 -fno-exceptions -fno-rtti -DJSON_NOEXCEPTION
 INCLUDES = -I./include -I./extern/json/single_include
 
 # Platform-specific settings

@@ -2,47 +2,11 @@
 //
 // Unit tests for microarchitecture database
 
+#include "test_common.hpp"
 #include <archspec/microarchitecture.hpp>
-#include <iostream>
-#include <cassert>
 #include <cstring>
 
 using namespace archspec;
-
-// Simple test framework
-int tests_passed = 0;
-int tests_failed = 0;
-
-#define TEST(name) void test_##name()
-#define RUN_TEST(name)                                             \
-    do {                                                           \
-        std::cout << "Running " #name "... ";                      \
-        try {                                                      \
-            test_##name();                                         \
-            std::cout << "PASSED" << std::endl;                    \
-            tests_passed++;                                        \
-        } catch (const std::exception& e) {                        \
-            std::cout << "FAILED: " << e.what() << std::endl;      \
-            tests_failed++;                                        \
-        } catch (...) {                                            \
-            std::cout << "FAILED: unknown exception" << std::endl; \
-            tests_failed++;                                        \
-        }                                                          \
-    } while (0)
-
-#define ASSERT(cond)                                              \
-    do {                                                          \
-        if (!(cond)) {                                            \
-            throw std::runtime_error("Assertion failed: " #cond); \
-        }                                                         \
-    } while (0)
-
-#define ASSERT_EQ(a, b)                                                  \
-    do {                                                                 \
-        if ((a) != (b)) {                                                \
-            throw std::runtime_error("Assertion failed: " #a " == " #b); \
-        }                                                                \
-    } while (0)
 
 // Test that database loads correctly
 TEST(database_loads) {
@@ -50,6 +14,7 @@ TEST(database_loads) {
     auto names = db.all_names();
     ASSERT(names.size() > 0);
     std::cout << "(found " << names.size() << " targets) ";
+    TEST_PASS();
 }
 
 // Test getting specific targets
@@ -58,6 +23,7 @@ TEST(get_x86_64) {
     ASSERT(target != nullptr);
     ASSERT_EQ(target->name(), "x86_64");
     ASSERT_EQ(target->vendor(), "generic");
+    TEST_PASS();
 }
 
 TEST(get_haswell) {
@@ -67,6 +33,7 @@ TEST(get_haswell) {
     ASSERT_EQ(target->vendor(), "GenuineIntel");
     ASSERT(target->features().count("avx2") > 0);
     ASSERT(target->features().count("fma") > 0);
+    TEST_PASS();
 }
 
 TEST(get_zen3) {
@@ -75,6 +42,7 @@ TEST(get_zen3) {
     ASSERT_EQ(target->name(), "zen3");
     ASSERT_EQ(target->vendor(), "AuthenticAMD");
     ASSERT(target->features().count("avx2") > 0);
+    TEST_PASS();
 }
 
 TEST(get_aarch64) {
@@ -82,6 +50,7 @@ TEST(get_aarch64) {
     ASSERT(target != nullptr);
     ASSERT_EQ(target->name(), "aarch64");
     ASSERT_EQ(target->vendor(), "generic");
+    TEST_PASS();
 }
 
 TEST(get_apple_m1) {
@@ -89,11 +58,13 @@ TEST(get_apple_m1) {
     ASSERT(target != nullptr);
     ASSERT_EQ(target->name(), "m1");
     ASSERT_EQ(target->vendor(), "Apple");
+    TEST_PASS();
 }
 
 TEST(get_nonexistent) {
     const auto* target = get_target("nonexistent_cpu_12345");
     ASSERT(target == nullptr);
+    TEST_PASS();
 }
 
 // Test ancestry
@@ -113,6 +84,7 @@ TEST(ancestors_haswell) {
         }
     }
     ASSERT(has_x86_64);
+    TEST_PASS();
 }
 
 TEST(ancestors_zen4) {
@@ -130,6 +102,7 @@ TEST(ancestors_zen4) {
         }
     }
     ASSERT(has_zen3);
+    TEST_PASS();
 }
 
 // Test family
@@ -137,18 +110,21 @@ TEST(family_haswell) {
     const auto* target = get_target("haswell");
     ASSERT(target != nullptr);
     ASSERT_EQ(target->family(), "x86_64");
+    TEST_PASS();
 }
 
 TEST(family_m1) {
     const auto* target = get_target("m1");
     ASSERT(target != nullptr);
     ASSERT_EQ(target->family(), "aarch64");
+    TEST_PASS();
 }
 
 TEST(family_power9le) {
     const auto* target = get_target("power9le");
     ASSERT(target != nullptr);
     ASSERT_EQ(target->family(), "ppc64le");
+    TEST_PASS();
 }
 
 // Test generic
@@ -158,6 +134,7 @@ TEST(generic_skylake) {
     std::string gen = target->generic();
     // Should be x86_64_v3 or similar generic target
     ASSERT(!gen.empty());
+    TEST_PASS();
 }
 
 // Test feature checking
@@ -167,6 +144,7 @@ TEST(has_feature_avx2) {
     ASSERT(target->has_feature("avx2"));
     ASSERT(target->has_feature("avx"));
     ASSERT(target->has_feature("sse4_1"));
+    TEST_PASS();
 }
 
 TEST(has_feature_alias) {
@@ -174,6 +152,7 @@ TEST(has_feature_alias) {
     ASSERT(target != nullptr);
     // sse4.1 is an alias for sse4_1
     ASSERT(target->has_feature("sse4.1"));
+    TEST_PASS();
 }
 
 // Test comparison operators
@@ -188,6 +167,7 @@ TEST(comparison_subset) {
     ASSERT(*x86_64 <= *haswell);
     ASSERT(!(*haswell < *x86_64));
     ASSERT(*haswell > *x86_64);
+    TEST_PASS();
 }
 
 TEST(comparison_equality) {
@@ -201,6 +181,7 @@ TEST(comparison_equality) {
     ASSERT(!(*haswell1 != *haswell2));
     ASSERT(*haswell1 <= *haswell2);
     ASSERT(*haswell1 >= *haswell2);
+    TEST_PASS();
 }
 
 // Test compiler flags
@@ -212,6 +193,7 @@ TEST(optimization_flags_gcc) {
     ASSERT(!flags.empty());
     // Should contain -march=haswell
     ASSERT(flags.find("haswell") != std::string::npos);
+    TEST_PASS();
 }
 
 TEST(optimization_flags_clang) {
@@ -220,6 +202,7 @@ TEST(optimization_flags_clang) {
 
     std::string flags = target->optimization_flags("clang", "10.0");
     ASSERT(!flags.empty());
+    TEST_PASS();
 }
 
 // Test generic microarchitecture creation
@@ -229,6 +212,7 @@ TEST(generic_microarchitecture) {
     ASSERT_EQ(generic.vendor(), "generic");
     ASSERT(generic.features().empty());
     ASSERT(generic.parent_names().empty());
+    TEST_PASS();
 }
 
 // Test database iteration
@@ -242,6 +226,7 @@ TEST(iterate_all_targets) {
     }
     ASSERT(count > 0);
     std::cout << "(iterated " << count << " targets) ";
+    TEST_PASS();
 }
 
 // Test Power generation
@@ -253,6 +238,7 @@ TEST(power_generation) {
     const auto* power10 = get_target("power10le");
     ASSERT(power10 != nullptr);
     ASSERT_EQ(power10->generation(), 10);
+    TEST_PASS();
 }
 
 // Test ARM CPU part
@@ -260,6 +246,7 @@ TEST(arm_cpu_part) {
     const auto* n1 = get_target("neoverse_n1");
     ASSERT(n1 != nullptr);
     ASSERT(!n1->cpu_part().empty());
+    TEST_PASS();
 }
 
 int main() {
@@ -307,8 +294,8 @@ int main() {
 
     std::cout << std::endl;
     std::cout << "=== Results ===" << std::endl;
-    std::cout << "Passed: " << tests_passed << std::endl;
-    std::cout << "Failed: " << tests_failed << std::endl;
+    std::cout << "Passed: " << g_tests_passed << std::endl;
+    std::cout << "Failed: " << g_tests_failed << std::endl;
 
-    return tests_failed > 0 ? 1 : 0;
+    return g_tests_failed > 0 ? 1 : 0;
 }

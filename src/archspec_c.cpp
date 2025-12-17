@@ -36,19 +36,16 @@ static bool s_initialized = false;
 
 static void ensure_initialized() {
     if (!s_initialized) {
-        try {
-            auto host_arch = archspec::host();
-            s_host_name = host_arch.name();
+        auto host_arch = archspec::host();
+        s_host_name = host_arch.name();
 
-            auto info = archspec::detect_cpu_info();
-            s_host_vendor = info.vendor;
+        auto info = archspec::detect_cpu_info();
+        s_host_vendor = info.vendor;
 
-            // Cache target names
-            const auto& db = archspec::MicroarchitectureDatabase::instance();
-            s_target_names = db.all_names();
-        } catch (...) {
-            // Ignore errors during initialization
-        }
+        // Cache target names
+        const auto& db = archspec::MicroarchitectureDatabase::instance();
+        s_target_names = db.all_names();
+
         s_initialized = true;
     }
 }
@@ -61,12 +58,8 @@ const char* archspec_host_name(void) {
 }
 
 char* archspec_host_features(void) {
-    try {
-        auto host_arch = archspec::host();
-        return to_c_string(join_features(host_arch.features()));
-    } catch (...) {
-        return nullptr;
-    }
+    auto host_arch = archspec::host();
+    return to_c_string(join_features(host_arch.features()));
 }
 
 const char* archspec_host_vendor(void) {
@@ -77,73 +70,53 @@ const char* archspec_host_vendor(void) {
 char* archspec_get_features(const char* name) {
     if (!name)
         return nullptr;
-    try {
-        const auto& db = archspec::MicroarchitectureDatabase::instance();
-        const auto* target = db.get(name);
-        if (!target)
-            return nullptr;
-        return to_c_string(join_features(target->features()));
-    } catch (...) {
+    const auto& db = archspec::MicroarchitectureDatabase::instance();
+    const auto* target = db.get(name);
+    if (!target)
         return nullptr;
-    }
+    return to_c_string(join_features(target->features()));
 }
 
 char* archspec_get_flags(const char* name, const char* compiler) {
     if (!name || !compiler)
         return nullptr;
-    try {
-        const auto& db = archspec::MicroarchitectureDatabase::instance();
-        const auto* target = db.get(name);
-        if (!target)
-            return nullptr;
-        // Use empty version string to get default flags
-        std::string flags = target->optimization_flags(compiler, "");
-        if (flags.empty())
-            return nullptr;
-        return to_c_string(flags);
-    } catch (...) {
+    const auto& db = archspec::MicroarchitectureDatabase::instance();
+    const auto* target = db.get(name);
+    if (!target)
         return nullptr;
-    }
+    // Use empty version string to get default flags
+    std::string flags = target->optimization_flags(compiler, "");
+    if (flags.empty())
+        return nullptr;
+    return to_c_string(flags);
 }
 
 char* archspec_host_flags(const char* compiler) {
     if (!compiler)
         return nullptr;
-    try {
-        auto host_arch = archspec::host();
-        // Use empty version string to get default flags
-        std::string flags = host_arch.optimization_flags(compiler, "");
-        if (flags.empty())
-            return nullptr;
-        return to_c_string(flags);
-    } catch (...) {
+    auto host_arch = archspec::host();
+    // Use empty version string to get default flags
+    std::string flags = host_arch.optimization_flags(compiler, "");
+    if (flags.empty())
         return nullptr;
-    }
+    return to_c_string(flags);
 }
 
 int archspec_has_feature(const char* name, const char* feature) {
     if (!name || !feature)
         return 0;
-    try {
-        const auto& db = archspec::MicroarchitectureDatabase::instance();
-        const auto* target = db.get(name);
-        if (!target)
-            return 0;
-        return target->has_feature(feature) ? 1 : 0;
-    } catch (...) {
+    const auto& db = archspec::MicroarchitectureDatabase::instance();
+    const auto* target = db.get(name);
+    if (!target)
         return 0;
-    }
+    return target->has_feature(feature) ? 1 : 0;
 }
 
 int archspec_host_has_feature(const char* feature) {
     if (!feature)
         return 0;
-    try {
-        auto host_arch = archspec::host();
-        return host_arch.has_feature(feature) ? 1 : 0;
-    } catch (...) {
-        return 0;
-    }
+    auto host_arch = archspec::host();
+    return host_arch.has_feature(feature) ? 1 : 0;
 }
 
 size_t archspec_target_count(void) {
@@ -161,12 +134,8 @@ const char* archspec_target_name(size_t index) {
 int archspec_target_exists(const char* name) {
     if (!name)
         return 0;
-    try {
-        const auto& db = archspec::MicroarchitectureDatabase::instance();
-        return db.exists(name) ? 1 : 0;
-    } catch (...) {
-        return 0;
-    }
+    const auto& db = archspec::MicroarchitectureDatabase::instance();
+    return db.exists(name) ? 1 : 0;
 }
 
 void archspec_free(char* str) {

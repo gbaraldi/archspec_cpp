@@ -2,52 +2,11 @@
 //
 // Unit tests for CPUID functionality (x86/x86_64 only)
 
+#include "test_common.hpp"
 #include <archspec/cpuid.hpp>
 #include <archspec/detect.hpp>
-#include <iostream>
-#include <cassert>
 
 using namespace archspec;
-
-// Simple test framework
-int tests_passed = 0;
-int tests_failed = 0;
-
-#define TEST(name) void test_##name()
-#define RUN_TEST(name)                                             \
-    do {                                                           \
-        std::cout << "Running " #name "... ";                      \
-        try {                                                      \
-            test_##name();                                         \
-            std::cout << "PASSED" << std::endl;                    \
-            tests_passed++;                                        \
-        } catch (const std::exception& e) {                        \
-            std::cout << "FAILED: " << e.what() << std::endl;      \
-            tests_failed++;                                        \
-        } catch (...) {                                            \
-            std::cout << "FAILED: unknown exception" << std::endl; \
-            tests_failed++;                                        \
-        }                                                          \
-    } while (0)
-
-#define SKIP_TEST(name, reason)                                  \
-    do {                                                         \
-        std::cout << "Skipping " #name ": " reason << std::endl; \
-    } while (0)
-
-#define ASSERT(cond)                                              \
-    do {                                                          \
-        if (!(cond)) {                                            \
-            throw std::runtime_error("Assertion failed: " #cond); \
-        }                                                         \
-    } while (0)
-
-#define ASSERT_EQ(a, b)                                                  \
-    do {                                                                 \
-        if ((a) != (b)) {                                                \
-            throw std::runtime_error("Assertion failed: " #a " == " #b); \
-        }                                                                \
-    } while (0)
 
 // Test CPUID support detection
 TEST(cpuid_support) {
@@ -61,13 +20,14 @@ TEST(cpuid_support) {
         ASSERT(!supported);
         std::cout << "(not supported on " << machine << ") ";
     }
+    TEST_PASS();
 }
 
 // Test vendor detection
 TEST(vendor_detection) {
     if (!Cpuid::is_supported()) {
         std::cout << "(skipped - not x86) ";
-        return;
+        TEST_PASS();
     }
 
     Cpuid cpuid;
@@ -91,13 +51,14 @@ TEST(vendor_detection) {
     if (!known_vendor)
         std::cout << " [unknown]";
     std::cout << ") ";
+    TEST_PASS();
 }
 
 // Test highest function support
 TEST(highest_function) {
     if (!Cpuid::is_supported()) {
         std::cout << "(skipped - not x86) ";
-        return;
+        TEST_PASS();
     }
 
     Cpuid cpuid;
@@ -113,13 +74,14 @@ TEST(highest_function) {
     }
 
     std::cout << "(basic: " << std::hex << basic << ", extended: " << extended << std::dec << ") ";
+    TEST_PASS();
 }
 
 // Test feature detection
 TEST(feature_detection) {
     if (!Cpuid::is_supported()) {
         std::cout << "(skipped - not x86) ";
-        return;
+        TEST_PASS();
     }
 
     Cpuid cpuid;
@@ -133,13 +95,14 @@ TEST(feature_detection) {
     if (machine == ARCH_X86_64) {
         ASSERT(features.count("fpu") || features.count("sse2")); // At minimum
     }
+    TEST_PASS();
 }
 
 // Test brand string
 TEST(brand_string_cpuid) {
     if (!Cpuid::is_supported()) {
         std::cout << "(skipped - not x86) ";
-        return;
+        TEST_PASS();
     }
 
     Cpuid cpuid;
@@ -152,13 +115,14 @@ TEST(brand_string_cpuid) {
     } else {
         std::cout << "(brand string not supported) ";
     }
+    TEST_PASS();
 }
 
 // Test CPUID query
 TEST(cpuid_query) {
     if (!Cpuid::is_supported()) {
         std::cout << "(skipped - not x86) ";
-        return;
+        TEST_PASS();
     }
 
     Cpuid cpuid;
@@ -171,13 +135,14 @@ TEST(cpuid_query) {
     ASSERT(regs.ebx != 0 || regs.ecx != 0 || regs.edx != 0);
 
     std::cout << "(EAX=0: max=" << regs.eax << ") ";
+    TEST_PASS();
 }
 
 // Test feature consistency with detection
 TEST(feature_consistency) {
     if (!Cpuid::is_supported()) {
         std::cout << "(skipped - not x86) ";
-        return;
+        TEST_PASS();
     }
 
     Cpuid cpuid;
@@ -198,6 +163,7 @@ TEST(feature_consistency) {
 
     // At least some features should be common
     ASSERT(common > 0 || cpuid_features.empty());
+    TEST_PASS();
 }
 
 int main() {
@@ -214,8 +180,8 @@ int main() {
 
     std::cout << std::endl;
     std::cout << "=== Results ===" << std::endl;
-    std::cout << "Passed: " << tests_passed << std::endl;
-    std::cout << "Failed: " << tests_failed << std::endl;
+    std::cout << "Passed: " << g_tests_passed << std::endl;
+    std::cout << "Failed: " << g_tests_failed << std::endl;
 
-    return tests_failed > 0 ? 1 : 0;
+    return g_tests_failed > 0 ? 1 : 0;
 }

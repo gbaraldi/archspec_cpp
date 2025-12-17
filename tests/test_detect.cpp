@@ -2,46 +2,10 @@
 //
 // Unit tests for CPU detection
 
+#include "test_common.hpp"
 #include <archspec/archspec.hpp>
-#include <iostream>
-#include <cassert>
 
 using namespace archspec;
-
-// Simple test framework
-int tests_passed = 0;
-int tests_failed = 0;
-
-#define TEST(name) void test_##name()
-#define RUN_TEST(name)                                             \
-    do {                                                           \
-        std::cout << "Running " #name "... ";                      \
-        try {                                                      \
-            test_##name();                                         \
-            std::cout << "PASSED" << std::endl;                    \
-            tests_passed++;                                        \
-        } catch (const std::exception& e) {                        \
-            std::cout << "FAILED: " << e.what() << std::endl;      \
-            tests_failed++;                                        \
-        } catch (...) {                                            \
-            std::cout << "FAILED: unknown exception" << std::endl; \
-            tests_failed++;                                        \
-        }                                                          \
-    } while (0)
-
-#define ASSERT(cond)                                              \
-    do {                                                          \
-        if (!(cond)) {                                            \
-            throw std::runtime_error("Assertion failed: " #cond); \
-        }                                                         \
-    } while (0)
-
-#define ASSERT_EQ(a, b)                                                  \
-    do {                                                                 \
-        if ((a) != (b)) {                                                \
-            throw std::runtime_error("Assertion failed: " #a " == " #b); \
-        }                                                                \
-    } while (0)
 
 // Test get_machine
 TEST(get_machine) {
@@ -54,6 +18,7 @@ TEST(get_machine) {
                   machine == ARCH_PPC64 || machine == ARCH_RISCV64 || machine == "i686" ||
                   machine == "i386" || machine == "arm64"); // macOS reports arm64
     ASSERT(known);
+    TEST_PASS();
 }
 
 // Test CPU info detection
@@ -71,6 +36,7 @@ TEST(detect_cpu_info) {
     else if (machine == ARCH_AARCH64) {
         std::cout << "(vendor: " << info.vendor << ") ";
     }
+    TEST_PASS();
 }
 
 // Test host detection
@@ -96,6 +62,7 @@ TEST(host_detection) {
     } else if (machine == ARCH_RISCV64) {
         ASSERT(family == ARCH_RISCV64);
     }
+    TEST_PASS();
 }
 
 // Test compatible microarchitectures
@@ -111,6 +78,7 @@ TEST(compatible_microarchitectures) {
         ASSERT(target != nullptr);
         ASSERT(target->valid());
     }
+    TEST_PASS();
 }
 
 // Test brand string (if available)
@@ -123,6 +91,7 @@ TEST(brand_string) {
     } else {
         std::cout << "(brand: not available) ";
     }
+    TEST_PASS();
 }
 
 // Test that host is in compatible list
@@ -142,6 +111,7 @@ TEST(host_is_compatible) {
     // Host should be one of the compatible architectures
     // (or be the generic one if nothing else matched)
     ASSERT(found || uarch.vendor() == "generic");
+    TEST_PASS();
 }
 
 // Test optimization flags for detected host
@@ -159,6 +129,7 @@ TEST(host_optimization_flags) {
     if (machine == ARCH_X86_64 && uarch.vendor() != "generic") {
         // Generic x86_64 might have flags, specific targets should have flags
     }
+    TEST_PASS();
 }
 
 // Test that host has expected features
@@ -178,6 +149,7 @@ TEST(host_features) {
     } else if (machine == ARCH_AARCH64 || machine == "arm64") {
         std::cout << "(features: " << uarch.features().size() << ") ";
     }
+    TEST_PASS();
 }
 
 int main() {
@@ -195,8 +167,8 @@ int main() {
 
     std::cout << std::endl;
     std::cout << "=== Results ===" << std::endl;
-    std::cout << "Passed: " << tests_passed << std::endl;
-    std::cout << "Failed: " << tests_failed << std::endl;
+    std::cout << "Passed: " << g_tests_passed << std::endl;
+    std::cout << "Failed: " << g_tests_failed << std::endl;
 
-    return tests_failed > 0 ? 1 : 0;
+    return g_tests_failed > 0 ? 1 : 0;
 }
