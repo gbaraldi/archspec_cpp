@@ -128,15 +128,6 @@ std::string detect_from_content(const std::string& content, const std::string& a
         return arch;
     }
 
-    // Sorting criteria: more ancestors and more features is better
-    auto sorting_fn = [](const Microarchitecture* a, const Microarchitecture* b) {
-        size_t a_depth = a->ancestors().size();
-        size_t b_depth = b->ancestors().size();
-        if (a_depth != b_depth)
-            return a_depth < b_depth;
-        return a->features().size() < b->features().size();
-    };
-
     // Find best generic candidate
     std::vector<const Microarchitecture*> generic_candidates;
     for (const auto* c : candidates) {
@@ -147,8 +138,8 @@ std::string detect_from_content(const std::string& content, const std::string& a
 
     const Microarchitecture* best_generic = nullptr;
     if (!generic_candidates.empty()) {
-        best_generic =
-            *std::max_element(generic_candidates.begin(), generic_candidates.end(), sorting_fn);
+        best_generic = *std::max_element(generic_candidates.begin(), generic_candidates.end(),
+                                         compare_microarch_specificity);
     }
 
     // Filter by CPU part for AArch64
@@ -182,7 +173,7 @@ std::string detect_from_content(const std::string& content, const std::string& a
     }
 
     const Microarchitecture* best =
-        *std::max_element(candidates.begin(), candidates.end(), sorting_fn);
+        *std::max_element(candidates.begin(), candidates.end(), compare_microarch_specificity);
     return best->name();
 }
 

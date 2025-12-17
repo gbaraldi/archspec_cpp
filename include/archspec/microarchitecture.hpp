@@ -162,8 +162,6 @@ class MicroarchitectureDatabase {
     MicroarchitectureDatabase& operator=(const MicroarchitectureDatabase&) = delete;
 
     void load_embedded_data();
-    void fill_target(const std::string& name, const void* json_data);
-    bool load_from_json_internal(const void* json_ptr);
 
     std::map<std::string, Microarchitecture> targets_;
     std::map<std::string, std::set<std::string>> feature_aliases_;
@@ -171,6 +169,10 @@ class MicroarchitectureDatabase {
     std::map<std::string, std::string> darwin_flags_;
     std::map<std::string, std::string> arm_vendors_;
     bool loaded_ = false;
+
+    // Allow JSON parsing helper access to private members
+    friend bool load_json_into_database(MicroarchitectureDatabase& db,
+                                        const std::string& json_data);
 };
 
 // Convenience function to get a microarchitecture by name

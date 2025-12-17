@@ -64,6 +64,18 @@ std::vector<const Microarchitecture*> compatible_microarchitectures(const Detect
 std::vector<const Microarchitecture*> compatible_microarchitectures(const DetectedCpuInfo& info,
                                                                     const std::string& arch);
 
+/**
+ * Compare microarchitectures for sorting: prefers more ancestors and more features
+ * Returns true if a < b (a is less specific than b)
+ */
+inline bool compare_microarch_specificity(const Microarchitecture* a, const Microarchitecture* b) {
+    size_t a_depth = a->ancestors().size();
+    size_t b_depth = b->ancestors().size();
+    if (a_depth != b_depth)
+        return a_depth < b_depth;
+    return a->features().size() < b->features().size();
+}
+
 // Platform-specific detection functions
 
 #if defined(__linux__) || defined(__FreeBSD__)

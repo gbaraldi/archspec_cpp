@@ -37,25 +37,21 @@ namespace archspec {
 
 namespace {
 
-// Helper to split string (used on Linux/macOS)
 [[maybe_unused]] std::vector<std::string> split(const std::string& s, char delimiter) {
     std::vector<std::string> tokens;
     std::string token;
     std::istringstream stream(s);
     while (std::getline(stream, token, delimiter)) {
-        // Trim whitespace
         size_t start = token.find_first_not_of(" \t\r\n");
         size_t end = token.find_last_not_of(" \t\r\n");
-        if (start != std::string::npos && end != std::string::npos) {
+        if (start != std::string::npos && end != std::string::npos)
             tokens.push_back(token.substr(start, end - start + 1));
-        } else if (start != std::string::npos) {
+        else if (start != std::string::npos)
             tokens.push_back(token.substr(start));
-        }
     }
     return tokens;
 }
 
-// Helper to convert string to lowercase (used on macOS)
 [[maybe_unused]] std::string to_lower(const std::string& s) {
     std::string result = s;
     std::transform(result.begin(), result.end(), result.begin(), ::tolower);
@@ -68,7 +64,6 @@ std::string get_machine() {
 #if defined(_WIN32) || defined(_WIN64)
     SYSTEM_INFO sysInfo;
     GetNativeSystemInfo(&sysInfo);
-
     switch (sysInfo.wProcessorArchitecture) {
     case PROCESSOR_ARCHITECTURE_AMD64:
         return ARCH_X86_64;
@@ -80,25 +75,18 @@ std::string get_machine() {
         return "unknown";
     }
 #elif defined(__APPLE__)
-    // On Apple Silicon, platform.machine() might return wrong value
-    // due to Rosetta, so check the brand string
+    // Check brand string first (Rosetta may report wrong arch)
     char brand[256] = {0};
     size_t size = sizeof(brand);
     if (sysctlbyname("machdep.cpu.brand_string", brand, &size, nullptr, 0) == 0) {
-        std::string brand_str(brand);
-        if (brand_str.find("Apple") != std::string::npos) {
+        if (std::string(brand).find("Apple") != std::string::npos)
             return ARCH_AARCH64;
-        }
     }
-
-    // Fall back to uname
     struct utsname uts;
     if (uname(&uts) == 0) {
         std::string machine = uts.machine;
-        // Normalize arm64 to aarch64
-        if (machine == "arm64") {
+        if (machine == "arm64")
             return ARCH_AARCH64;
-        }
         return machine;
     }
     return "unknown";
@@ -106,13 +94,10 @@ std::string get_machine() {
     struct utsname uts;
     if (uname(&uts) == 0) {
         std::string machine = uts.machine;
-        // Normalize architecture names
-        if (machine == "arm64") {
+        if (machine == "arm64")
             return ARCH_AARCH64;
-        }
-        if (machine == "amd64") {
+        if (machine == "amd64")
             return ARCH_X86_64;
-        }
         return machine;
     }
     return "unknown";
@@ -393,72 +378,45 @@ std::optional<std::string> brand_string() {
 
 namespace compatibility {
 
-bool check_x86_64(const DetectedCpuInfo& info, const Microarchitecture& target) {
-    const auto& db = MicroarchitectureDatabase::instance();
-    const auto* arch_root = db.get(ARCH_X86_64);
-
-    if (!arch_root)
-        return false;
-
-    // Check if target is x86_64 or descended from it
-    bool is_x86_family = (target.name() == ARCH_X86_64);
-    if (!is_x86_family) {
-        for (const auto& ancestor : target.ancestors()) {
-            if (ancestor == ARCH_X86_64) {
-                is_x86_family = true;
-                break;
-            }
-        }
+static bool is_in_family(const Microarchitecture& target, const std::string& family_name) {
+    if (target.name() == family_name)
+        return true;
+    for (const auto& ancestor : target.ancestors()) {
+        if (ancestor == family_name)
+            return true;
     }
+    return false;
+}
 
-    if (!is_x86_family)
-        return false;
+static bool vendor_matches(const Microarchitecture& target, const std::string& info_vendor) {
+    return target.vendor() == "generic" || target.vendor() == info_vendor;
+}
 
-    // Check vendor
-    if (target.vendor() != "generic" && target.vendor() != info.vendor) {
-        return false;
-    }
-
-    // Check features - target's features must be subset of info's features
+static bool has_required_features(const Microarchitecture& target,
+                                  const std::set<std::string>& available_features) {
     for (const auto& feature : target.features()) {
-        if (info.features.count(feature) == 0) {
+        if (available_features.count(feature) == 0)
             return false;
-        }
     }
-
     return true;
 }
 
+bool check_x86_64(const DetectedCpuInfo& info, const Microarchitecture& target) {
+    return is_in_family(target, ARCH_X86_64) && vendor_matches(target, info.vendor) &&
+           has_required_features(target, info.features);
+}
+
 bool check_aarch64(const DetectedCpuInfo& info, const Microarchitecture& target) {
-    // Generic targets other than aarch64 itself aren't compatible
-    if (target.vendor() == "generic" && target.name() != ARCH_AARCH64) {
+    if (target.vendor() == "generic" && target.name() != ARCH_AARCH64)
         return false;
-    }
-
-    // Check if target is aarch64 family
-    bool is_aarch64_family = (target.name() == ARCH_AARCH64);
-    if (!is_aarch64_family) {
-        for (const auto& ancestor : target.ancestors()) {
-            if (ancestor == ARCH_AARCH64) {
-                is_aarch64_family = true;
-                break;
-            }
-        }
-    }
-
-    if (!is_aarch64_family)
+    if (!is_in_family(target, ARCH_AARCH64))
         return false;
-
-    // Check vendor
-    if (target.vendor() != "generic" && target.vendor() != info.vendor) {
+    if (!vendor_matches(target, info.vendor))
         return false;
-    }
 
 #if defined(__APPLE__)
-    // On macOS, we can match by name for Apple Silicon
     if (!info.name.empty()) {
-        const auto& db = MicroarchitectureDatabase::instance();
-        const auto* model = db.get(info.name);
+        const auto* model = MicroarchitectureDatabase::instance().get(info.name);
         if (model) {
             if (target.name() == info.name)
                 return true;
@@ -469,66 +427,20 @@ bool check_aarch64(const DetectedCpuInfo& info, const Microarchitecture& target)
         }
     }
 #else
-    // On Linux, check features
-    for (const auto& feature : target.features()) {
-        if (info.features.count(feature) == 0) {
-            return false;
-        }
-    }
+    if (!has_required_features(target, info.features))
+        return false;
 #endif
-
     return true;
 }
 
 bool check_ppc64(const DetectedCpuInfo& info, const Microarchitecture& target) {
     std::string arch = get_machine();
-    const auto& db = MicroarchitectureDatabase::instance();
-    const auto* arch_root = db.get(arch);
-
-    if (!arch_root)
-        return false;
-
-    // Check if target is in the right family
-    bool is_ppc_family = (target.name() == arch);
-    if (!is_ppc_family) {
-        for (const auto& ancestor : target.ancestors()) {
-            if (ancestor == arch) {
-                is_ppc_family = true;
-                break;
-            }
-        }
-    }
-
-    if (!is_ppc_family)
-        return false;
-
-    // Check generation
-    return target.generation() <= info.generation;
+    return is_in_family(target, arch) && target.generation() <= info.generation;
 }
 
 bool check_riscv64(const DetectedCpuInfo& info, const Microarchitecture& target) {
-    const auto& db = MicroarchitectureDatabase::instance();
-    const auto* arch_root = db.get(ARCH_RISCV64);
-
-    if (!arch_root)
-        return false;
-
-    // Check if target is riscv64 family
-    bool is_riscv_family = (target.name() == ARCH_RISCV64);
-    if (!is_riscv_family) {
-        for (const auto& ancestor : target.ancestors()) {
-            if (ancestor == ARCH_RISCV64) {
-                is_riscv_family = true;
-                break;
-            }
-        }
-    }
-
-    if (!is_riscv_family)
-        return false;
-
-    // Match by name or accept generic
-    return (target.name() == info.name || target.vendor() == "generic");
+    return is_in_family(target, ARCH_RISCV64) &&
+           (target.name() == info.name || target.vendor() == "generic");
 }
 
 } // namespace compatibility
@@ -538,38 +450,29 @@ std::vector<const Microarchitecture*> compatible_microarchitectures(const Detect
     std::vector<const Microarchitecture*> result;
     const auto& db = MicroarchitectureDatabase::instance();
 
-    // Select compatibility checker based on architecture
     std::function<bool(const DetectedCpuInfo&, const Microarchitecture&)> checker;
-
-    if (arch == ARCH_X86_64 || arch == "i686" || arch == "i386") {
+    if (arch == ARCH_X86_64 || arch == "i686" || arch == "i386")
         checker = compatibility::check_x86_64;
-    } else if (arch == ARCH_AARCH64) {
+    else if (arch == ARCH_AARCH64)
         checker = compatibility::check_aarch64;
-    } else if (arch == ARCH_PPC64 || arch == ARCH_PPC64LE) {
+    else if (arch == ARCH_PPC64 || arch == ARCH_PPC64LE)
         checker = compatibility::check_ppc64;
-    } else if (arch == ARCH_RISCV64) {
+    else if (arch == ARCH_RISCV64)
         checker = compatibility::check_riscv64;
-    } else {
-        // Unknown architecture - return generic if it exists
-        const auto* generic = db.get(arch);
-        if (generic) {
+    else {
+        if (const auto* generic = db.get(arch))
             result.push_back(generic);
-        }
         return result;
     }
 
     for (const auto& [name, target] : db.all()) {
-        if (checker(info, target)) {
+        if (checker(info, target))
             result.push_back(&target);
-        }
     }
 
-    // If no matches, return generic for this arch
     if (result.empty()) {
-        const auto* generic = db.get(arch);
-        if (generic) {
+        if (const auto* generic = db.get(arch))
             result.push_back(generic);
-        }
     }
 
     return result;
@@ -580,77 +483,48 @@ std::vector<const Microarchitecture*> compatible_microarchitectures(const Detect
 }
 
 Microarchitecture host() {
-    // Detect CPU info
     DetectedCpuInfo info = detect_cpu_info();
-
-    // Get compatible candidates
     auto candidates = compatible_microarchitectures(info);
 
-    if (candidates.empty()) {
-        // Return generic for this architecture
+    if (candidates.empty())
         return generic_microarchitecture(get_machine());
-    }
 
-    // Sorting criteria: more ancestors and more features is better
-    auto sorting_fn = [](const Microarchitecture* a, const Microarchitecture* b) {
-        size_t a_depth = a->ancestors().size();
-        size_t b_depth = b->ancestors().size();
-        if (a_depth != b_depth)
-            return a_depth < b_depth;
-        return a->features().size() < b->features().size();
-    };
-
-    // Find best generic candidate
     std::vector<const Microarchitecture*> generic_candidates;
     for (const auto* c : candidates) {
-        if (c->vendor() == "generic") {
+        if (c->vendor() == "generic")
             generic_candidates.push_back(c);
-        }
     }
 
     const Microarchitecture* best_generic = nullptr;
     if (!generic_candidates.empty()) {
-        best_generic =
-            *std::max_element(generic_candidates.begin(), generic_candidates.end(), sorting_fn);
+        best_generic = *std::max_element(generic_candidates.begin(), generic_candidates.end(),
+                                         compare_microarch_specificity);
     }
 
-    // Filter by CPU part for AArch64
     if (!info.cpu_part.empty()) {
         std::vector<const Microarchitecture*> cpu_part_matches;
         for (const auto* c : candidates) {
-            if (c->cpu_part() == info.cpu_part) {
+            if (c->cpu_part() == info.cpu_part)
                 cpu_part_matches.push_back(c);
-            }
         }
-        if (!cpu_part_matches.empty()) {
+        if (!cpu_part_matches.empty())
             candidates = cpu_part_matches;
-        }
     }
 
-    // Filter candidates to be descendants of best generic
     if (best_generic) {
         std::vector<const Microarchitecture*> filtered;
         for (const auto* c : candidates) {
-            if (*c > *best_generic) {
+            if (*c > *best_generic)
                 filtered.push_back(c);
-            }
         }
-        if (!filtered.empty()) {
+        if (!filtered.empty())
             candidates = filtered;
-        }
     }
 
-    // Return the best candidate
-    if (candidates.empty()) {
-        if (best_generic) {
-            return *best_generic;
-        }
-        return generic_microarchitecture(get_machine());
-    }
+    if (candidates.empty())
+        return best_generic ? *best_generic : generic_microarchitecture(get_machine());
 
-    const Microarchitecture* best =
-        *std::max_element(candidates.begin(), candidates.end(), sorting_fn);
-    return *best;
+    return **std::max_element(candidates.begin(), candidates.end(), compare_microarch_specificity);
 }
 
 } // namespace archspec
