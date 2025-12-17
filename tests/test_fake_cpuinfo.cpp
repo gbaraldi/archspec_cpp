@@ -6,15 +6,12 @@
 #include <archspec/archspec.hpp>
 #include <algorithm>
 #include <cstdlib>
-#include <filesystem>
 #include <fstream>
 #include <map>
 #include <set>
 #include <sstream>
 
 using namespace archspec;
-
-namespace fs = std::filesystem;
 
 // Parse cpuinfo content (similar to detect_from_proc_cpuinfo but takes string input)
 DetectedCpuInfo parse_cpuinfo_content(const std::string& content, const std::string& arch) {
