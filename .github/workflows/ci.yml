@@ -83,6 +83,7 @@ jobs:
         prepare: |
           pkg install -y gmake git
         run: |
+          git config --global --add safe.directory /home/runner/work/archspec_cpp/archspec_cpp
           git submodule update --init --recursive
           gmake
           gmake check
