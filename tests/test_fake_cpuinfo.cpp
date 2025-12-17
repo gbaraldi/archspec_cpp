@@ -6,12 +6,15 @@
 #include <archspec/archspec.hpp>
 #include <algorithm>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <map>
 #include <set>
 #include <sstream>
 
 using namespace archspec;
+
+namespace fs = std::filesystem;
 
 // Parse cpuinfo content (similar to detect_from_proc_cpuinfo but takes string input)
 DetectedCpuInfo parse_cpuinfo_content(const std::string& content, const std::string& arch) {
@@ -339,6 +342,16 @@ int main() {
     std::cout << "=== archspec_cpp Fake cpuinfo Tests ===" << std::endl;
     std::cout << std::endl;
 
+#if defined(_WIN32) || defined(_WIN64)
+    // Skip these tests on Windows - they test Linux /proc/cpuinfo parsing
+    // which is not relevant to Windows
+    std::cout << "Skipping tests on Windows (Linux-specific cpuinfo tests)" << std::endl;
+    std::cout << std::endl;
+    std::cout << "=== Results ===" << std::endl;
+    std::cout << "Passed: 0 (skipped)" << std::endl;
+    std::cout << "Failed: 0" << std::endl;
+    return 0;
+#else
     // x86_64 tests (Intel)
     RUN_TEST(fake_cpuinfo_haswell);
     RUN_TEST(fake_cpuinfo_broadwell);
@@ -358,4 +371,5 @@ int main() {
     std::cout << "Failed: " << g_tests_failed << std::endl;
 
     return g_tests_failed > 0 ? 1 : 0;
+#endif
 }
