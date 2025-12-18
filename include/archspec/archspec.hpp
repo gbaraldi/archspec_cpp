@@ -8,5 +8,6 @@
 
 #include "microarchitecture.hpp"
 #include "detect.hpp"
+#include "llvm_compat.hpp"
 
 #endif // ARCHSPEC_HPP

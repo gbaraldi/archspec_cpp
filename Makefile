@@ -58,7 +58,7 @@ LIBDIR = $(BUILDDIR)/lib
 BINDIR = $(BUILDDIR)/bin
 
 # Source files
-SOURCES = $(SRCDIR)/cpuid.cpp $(SRCDIR)/microarchitecture.cpp $(SRCDIR)/detect.cpp $(SRCDIR)/archspec_c.cpp
+SOURCES = $(SRCDIR)/cpuid.cpp $(SRCDIR)/microarchitecture.cpp $(SRCDIR)/detect.cpp $(SRCDIR)/archspec_c.cpp $(SRCDIR)/llvm_compat.cpp
 OBJECTS = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SOURCES))
 
 # Library names

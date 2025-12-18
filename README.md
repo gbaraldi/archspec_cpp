@@ -245,4 +245,3 @@ This library is dual-licensed under Apache-2.0 OR MIT, matching the original arc
 
 - Based on [archspec](https://github.com/archspec/archspec) by Lawrence Livermore National Security, LLC
 - Uses [nlohmann/json](https://github.com/nlohmann/json) for JSON parsing
-
