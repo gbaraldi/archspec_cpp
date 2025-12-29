@@ -26,6 +26,17 @@ class Microarchitecture;
 std::string map_feature_to_llvm(std::string_view arch_family, std::string_view feature);
 
 /**
+ * Map an LLVM feature name back to archspec feature name.
+ * Reverses the mapping done by map_feature_to_llvm.
+ * Returns the input unchanged if no mapping is needed.
+ *
+ * @param arch_family Architecture family ("x86_64", "aarch64", etc.)
+ * @param feature The LLVM feature name
+ * @return archspec-compatible feature name
+ */
+std::string map_llvm_feature_to_archspec(std::string_view arch_family, std::string_view feature);
+
+/**
  * Get all LLVM-compatible features for a microarchitecture.
  * Handles mapping and filtering automatically.
  *

@@ -181,6 +181,49 @@ std::string map_feature_to_llvm(std::string_view arch_family, std::string_view f
     return feat_str;
 }
 
+std::string map_llvm_feature_to_archspec(std::string_view arch_family, std::string_view feature) {
+    std::string feat_str(feature);
+    
+    // Build reverse maps lazily (static)
+    static std::unordered_map<std::string, std::string> aarch64_reverse_map;
+    static std::unordered_map<std::string, std::string> x86_64_reverse_map;
+    static std::unordered_map<std::string, std::string> riscv_reverse_map;
+    static bool initialized = false;
+    
+    if (!initialized) {
+        for (const auto& p : aarch64_feature_map) {
+            aarch64_reverse_map[p.second] = p.first;
+        }
+        for (const auto& p : x86_64_feature_map) {
+            x86_64_reverse_map[p.second] = p.first;
+        }
+        for (const auto& p : riscv_feature_map) {
+            riscv_reverse_map[p.second] = p.first;
+        }
+        initialized = true;
+    }
+    
+    if (arch_family == "aarch64") {
+        auto it = aarch64_reverse_map.find(feat_str);
+        if (it != aarch64_reverse_map.end()) {
+            return it->second;
+        }
+    } else if (arch_family == "x86_64" || arch_family == "x86") {
+        auto it = x86_64_reverse_map.find(feat_str);
+        if (it != x86_64_reverse_map.end()) {
+            return it->second;
+        }
+    } else if (arch_family == "riscv64" || arch_family == "riscv32") {
+        auto it = riscv_reverse_map.find(feat_str);
+        if (it != riscv_reverse_map.end()) {
+            return it->second;
+        }
+    }
+    
+    // No mapping needed, return as-is
+    return feat_str;
+}
+
 std::set<std::string> get_llvm_features(const Microarchitecture& uarch) {
     std::set<std::string> result;
     std::string family = uarch.family();
@@ -300,12 +343,18 @@ static const std::unordered_map<std::string, std::string> x86_64_cpu_reverse_map
     {"znver2", "zen2"},
     {"znver3", "zen3"},
     {"znver4", "zen4"},
+    {"znver5", "zen5"},
     // Intel
     {"icelake-client", "icelake"},
     {"icelake-server", "icelake_server"},
     {"skylake-avx512", "skylake_avx512"},
     {"cascadelake", "cascadelake"},
     {"cooperlake", "cooperlake"},
+    // x86-64 feature levels
+    {"x86-64", "x86_64"},
+    {"x86-64-v2", "x86_64_v2"},
+    {"x86-64-v3", "x86_64_v3"},
+    {"x86-64-v4", "x86_64_v4"},
 };
 
 std::string normalize_cpu_name(std::string_view arch_family, std::string_view llvm_name) {

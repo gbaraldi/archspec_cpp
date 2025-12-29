@@ -131,23 +131,139 @@ void test_host_llvm_features() {
     printf("  PASS: host LLVM features\n");
 }
 
+void test_llvm_to_archspec_feature_mapping() {
+    printf("Testing LLVM to archspec feature mapping (reverse)...\n");
+
+    // Test x86_64 reverse mappings (LLVM -> archspec)
+    assert(archspec::map_llvm_feature_to_archspec("x86_64", "sse4.1") == "sse4_1");
+    assert(archspec::map_llvm_feature_to_archspec("x86_64", "sse4.2") == "sse4_2");
+    assert(archspec::map_llvm_feature_to_archspec("x86_64", "avx512vnni") == "avx512_vnni");
+    assert(archspec::map_llvm_feature_to_archspec("x86_64", "avx512bf16") == "avx512_bf16");
+    assert(archspec::map_llvm_feature_to_archspec("x86_64", "sahf") == "lahf_lm");
+    assert(archspec::map_llvm_feature_to_archspec("x86_64", "pclmul") == "pclmulqdq");
+    assert(archspec::map_llvm_feature_to_archspec("x86_64", "rdrnd") == "rdrand");
+    assert(archspec::map_llvm_feature_to_archspec("x86_64", "lzcnt") == "abm");
+    assert(archspec::map_llvm_feature_to_archspec("x86_64", "bmi") == "bmi1");
+    assert(archspec::map_llvm_feature_to_archspec("x86_64", "sha") == "sha_ni");
+    assert(archspec::map_llvm_feature_to_archspec("x86_64", "amx-bf16") == "amx_bf16");
+    assert(archspec::map_llvm_feature_to_archspec("x86_64", "amx-int8") == "amx_int8");
+    assert(archspec::map_llvm_feature_to_archspec("x86_64", "amx-tile") == "amx_tile");
+
+    // Test AArch64 reverse mappings
+    assert(archspec::map_llvm_feature_to_archspec("aarch64", "neon") == "asimd");
+    assert(archspec::map_llvm_feature_to_archspec("aarch64", "dotprod") == "asimddp");
+    assert(archspec::map_llvm_feature_to_archspec("aarch64", "crc") == "crc32");
+    assert(archspec::map_llvm_feature_to_archspec("aarch64", "lse") == "atomics");
+    assert(archspec::map_llvm_feature_to_archspec("aarch64", "complxnum") == "fcma");
+    assert(archspec::map_llvm_feature_to_archspec("aarch64", "rcpc") == "lrcpc");
+    assert(archspec::map_llvm_feature_to_archspec("aarch64", "pauth") == "paca");
+
+    // Test pass-through (features that don't need mapping)
+    assert(archspec::map_llvm_feature_to_archspec("x86_64", "avx") == "avx");
+    assert(archspec::map_llvm_feature_to_archspec("x86_64", "avx2") == "avx2");
+    assert(archspec::map_llvm_feature_to_archspec("aarch64", "aes") == "aes");
+    assert(archspec::map_llvm_feature_to_archspec("aarch64", "sha2") == "sha2");
+
+    printf("  PASS: LLVM to archspec feature mapping\n");
+}
+
+void test_feature_roundtrip() {
+    printf("Testing feature mapping roundtrip...\n");
+
+    // Test that archspec -> LLVM -> archspec roundtrips correctly for x86_64
+    auto test_x86_roundtrip = [](const char* archspec_feat) {
+        std::string llvm = archspec::map_feature_to_llvm("x86_64", archspec_feat);
+        if (!llvm.empty()) {
+            std::string back = archspec::map_llvm_feature_to_archspec("x86_64", llvm);
+            if (back != archspec_feat) {
+                printf("  FAIL: %s -> %s -> %s\n", archspec_feat, llvm.c_str(), back.c_str());
+                assert(false);
+            }
+        }
+    };
+
+    test_x86_roundtrip("sse4_1");
+    test_x86_roundtrip("sse4_2");
+    test_x86_roundtrip("rdrand");
+    test_x86_roundtrip("lahf_lm");
+    test_x86_roundtrip("pclmulqdq");
+    test_x86_roundtrip("bmi1");
+    test_x86_roundtrip("sha_ni");
+    test_x86_roundtrip("amx_bf16");
+
+    // Test AArch64 roundtrip
+    auto test_aarch64_roundtrip = [](const char* archspec_feat) {
+        std::string llvm = archspec::map_feature_to_llvm("aarch64", archspec_feat);
+        if (!llvm.empty()) {
+            std::string back = archspec::map_llvm_feature_to_archspec("aarch64", llvm);
+            if (back != archspec_feat) {
+                printf("  FAIL: %s -> %s -> %s\n", archspec_feat, llvm.c_str(), back.c_str());
+                assert(false);
+            }
+        }
+    };
+
+    test_aarch64_roundtrip("asimd");
+    test_aarch64_roundtrip("asimddp");
+    test_aarch64_roundtrip("crc32");
+    test_aarch64_roundtrip("atomics");
+    test_aarch64_roundtrip("fcma");
+    test_aarch64_roundtrip("lrcpc");
+    test_aarch64_roundtrip("paca");
+
+    printf("  PASS: feature mapping roundtrip\n");
+}
+
 void test_cpu_name_normalization() {
     printf("Testing CPU name normalization...\n");
 
-    // Test AArch64 reverse mappings
-    assert(archspec::normalize_cpu_name("aarch64", "apple-m4") == "m4");
+    // Test Apple Silicon normalization
     assert(archspec::normalize_cpu_name("aarch64", "apple-m1") == "m1");
+    assert(archspec::normalize_cpu_name("aarch64", "apple-m2") == "m2");
+    assert(archspec::normalize_cpu_name("aarch64", "apple-m3") == "m3");
+    assert(archspec::normalize_cpu_name("aarch64", "apple-m4") == "m4");
     assert(archspec::normalize_cpu_name("aarch64", "apple-a15") == "a15");
+    assert(archspec::normalize_cpu_name("aarch64", "apple-a16") == "a16");
+
+    // Test ARM Cortex normalization (only cortex_a72 is in archspec DB)
+    assert(archspec::normalize_cpu_name("aarch64", "cortex-a57") == "aarch64");
     assert(archspec::normalize_cpu_name("aarch64", "cortex-a72") == "cortex_a72");
+    assert(archspec::normalize_cpu_name("aarch64", "cortex-a73") == "cortex_a72");
+    assert(archspec::normalize_cpu_name("aarch64", "cortex-a76") == "cortex_a72");
+
+    // Test Neoverse normalization
     assert(archspec::normalize_cpu_name("aarch64", "neoverse-n1") == "neoverse_n1");
+    assert(archspec::normalize_cpu_name("aarch64", "neoverse-n2") == "neoverse_n2");
+    assert(archspec::normalize_cpu_name("aarch64", "neoverse-v1") == "neoverse_v1");
+    assert(archspec::normalize_cpu_name("aarch64", "neoverse-v2") == "neoverse_v2");
+
+    // Test Thunderx normalization
+    assert(archspec::normalize_cpu_name("aarch64", "thunderx2t99") == "thunderx2");
+    assert(archspec::normalize_cpu_name("aarch64", "thunderx3t110") == "thunderx2");
+
+    // Test Nvidia/Ampere normalization
+    assert(archspec::normalize_cpu_name("aarch64", "carmel") == "aarch64");
+    assert(archspec::normalize_cpu_name("aarch64", "ampere1") == "neoverse_n1");
+    assert(archspec::normalize_cpu_name("aarch64", "ampere1a") == "neoverse_n1");
 
     // Test x86 reverse mappings
     assert(archspec::normalize_cpu_name("x86_64", "znver3") == "zen3");
     assert(archspec::normalize_cpu_name("x86_64", "znver4") == "zen4");
+    assert(archspec::normalize_cpu_name("x86_64", "znver5") == "zen5");
     assert(archspec::normalize_cpu_name("x86_64", "icelake-client") == "icelake");
+    assert(archspec::normalize_cpu_name("x86_64", "icelake-server") == "icelake_server");
+    assert(archspec::normalize_cpu_name("x86_64", "skylake-avx512") == "skylake_avx512");
+    assert(archspec::normalize_cpu_name("x86_64", "cascadelake") == "cascadelake");
+
+    // Test x86-64 feature levels
+    assert(archspec::normalize_cpu_name("x86_64", "x86-64") == "x86_64");
+    assert(archspec::normalize_cpu_name("x86_64", "x86-64-v2") == "x86_64_v2");
+    assert(archspec::normalize_cpu_name("x86_64", "x86-64-v3") == "x86_64_v3");
+    assert(archspec::normalize_cpu_name("x86_64", "x86-64-v4") == "x86_64_v4");
 
     // Test pass-through
     assert(archspec::normalize_cpu_name("x86_64", "haswell") == "haswell");
+    assert(archspec::normalize_cpu_name("x86_64", "broadwell") == "broadwell");
     assert(archspec::normalize_cpu_name("aarch64", "generic") == "generic");
 
     printf("  PASS: CPU name normalization\n");
@@ -190,6 +306,8 @@ int main() {
 
     test_aarch64_feature_mapping();
     test_x86_feature_mapping();
+    test_llvm_to_archspec_feature_mapping();
+    test_feature_roundtrip();
     test_cpu_name_mapping();
     test_host_llvm_features();
     test_cpu_name_normalization();
