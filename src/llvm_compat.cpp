@@ -17,14 +17,15 @@ static const std::unordered_map<std::string, std::string> aarch64_feature_map = 
     {"crc32", "crc"},        {"fcma", "complxnum"},   {"fp", "fp-armv8"},
     {"fphp", "fullfp16"},    {"jscvt", "jsconv"},     {"lrcpc", "rcpc"},
     {"ilrcpc", "rcpc-immo"}, {"paca", "pauth"},       {"pacg", "pauth"},
-    {"rng", "rand"},         {"svebf16", "sve-bf16"}, {"svei8mm", "sve-i8mm"},
+    {"rng", "rand"},
 };
 
 // Features to filter out (no LLVM equivalent or implied by other features)
 static const std::set<std::string> aarch64_filter_out = {
-    "cpuid",   "dcpodp", "dcpop",
-    "dgh", // Data Gathering Hint - no LLVM feature
-    "evtstrm", "flagm2", "frint", "uscat", "sha1", "sha512", "pmull",
+    "cpuid", "dcpodp", "dcpop", "dgh", "evtstrm", "flagm2", "frint",
+    "uscat", "sha1", "sha512", "pmull",
+    "svebf16",  // implied by sve + bf16
+    "svei8mm",  // implied by sve + i8mm
 };
 
 // ============================================================================
@@ -261,25 +262,35 @@ static const std::unordered_map<std::string, std::string> aarch64_cpu_reverse_ma
     {"apple-a15", "a15"},
     {"apple-a16", "a16"},
     {"apple-a17", "a17"},
-    // Qualcomm
+    // Qualcomm - thunderx2 is in DB
     {"thunderx2t99", "thunderx2"},
-    {"thunderx3t110", "thunderx3"},
-    // ARM Cortex
-    {"cortex-a53", "cortex_a53"},
-    {"cortex-a55", "cortex_a55"},
-    {"cortex-a57", "cortex_a57"},
+    {"thunderx3t110", "thunderx2"},  // thunderx3 not in DB, use thunderx2
+    // ARM Cortex - only cortex_a72 is in DB, map older ones to aarch64 base
+    {"cortex-a35", "aarch64"},
+    {"cortex-a53", "aarch64"},
+    {"cortex-a55", "aarch64"},
+    {"cortex-a57", "aarch64"},
+    {"cortex-a65", "aarch64"},
     {"cortex-a72", "cortex_a72"},
-    {"cortex-a73", "cortex_a73"},
-    {"cortex-a75", "cortex_a75"},
-    {"cortex-a76", "cortex_a76"},
-    {"cortex-a77", "cortex_a77"},
-    {"cortex-a78", "cortex_a78"},
-    {"cortex-x1", "cortex_x1"},
-    {"cortex-x2", "cortex_x2"},
+    {"cortex-a73", "cortex_a72"},
+    {"cortex-a75", "cortex_a72"},
+    {"cortex-a76", "cortex_a72"},
+    {"cortex-a77", "cortex_a72"},
+    {"cortex-a78", "cortex_a72"},
+    {"cortex-a710", "cortex_a72"},
+    {"cortex-x1", "cortex_a72"},
+    {"cortex-x2", "cortex_a72"},
+    {"cortex-x3", "cortex_a72"},
+    // Neoverse - all are in DB
     {"neoverse-n1", "neoverse_n1"},
     {"neoverse-n2", "neoverse_n2"},
     {"neoverse-v1", "neoverse_v1"},
     {"neoverse-v2", "neoverse_v2"},
+    // Nvidia
+    {"carmel", "aarch64"},
+    // Ampere
+    {"ampere1", "neoverse_n1"},
+    {"ampere1a", "neoverse_n1"},
 };
 
 static const std::unordered_map<std::string, std::string> x86_64_cpu_reverse_map = {
