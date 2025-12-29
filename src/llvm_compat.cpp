@@ -33,32 +33,33 @@ static const std::set<std::string> aarch64_filter_out = {
 // ============================================================================
 
 static const std::unordered_map<std::string, std::string> x86_64_feature_map = {
-    // Most x86 features have the same name, but some differ
     {"sse4_1", "sse4.1"},
     {"sse4_2", "sse4.2"},
-    {"avx512f", "avx512f"},
-    {"avx512cd", "avx512cd"},
-    {"avx512vl", "avx512vl"},
-    {"avx512bw", "avx512bw"},
-    {"avx512dq", "avx512dq"},
     {"avx512_vnni", "avx512vnni"},
     {"avx512_bf16", "avx512bf16"},
     {"avx512_vbmi", "avx512vbmi"},
     {"avx512_vbmi2", "avx512vbmi2"},
     {"avx512_ifma", "avx512ifma"},
     {"avx512_vpopcntdq", "avx512vpopcntdq"},
+    {"avx512_vp2intersect", "avx512vp2intersect"},
     {"avx512_bitalg", "avx512bitalg"},
     {"avx_vnni", "avxvnni"},
-    {"clflushopt", "clflushopt"},
-    {"clwb", "clwb"},
-    {"movdiri", "movdiri"},
-    {"movdir64b", "movdir64b"},
-    {"pconfig", "pconfig"},
+    {"lahf_lm", "sahf"},
+    {"pclmulqdq", "pclmul"},
+    {"rdrand", "rdrnd"},
+    {"abm", "lzcnt"},
+    {"bmi1", "bmi"},
+    {"sha_ni", "sha"},
+    {"amx_bf16", "amx-bf16"},
+    {"amx_int8", "amx-int8"},
+    {"amx_tile", "amx-tile"},
 };
 
-// x86 features to filter out
 static const std::set<std::string> x86_64_filter_out = {
-    // Usually none need filtering on x86
+    "3dnow",
+    "3dnowext",
+    "avx512er",
+    "avx512pf",
 };
 
 // ============================================================================

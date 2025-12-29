@@ -39,10 +39,31 @@ void test_x86_feature_mapping() {
     assert(archspec::map_feature_to_llvm("x86_64", "sse4_2") == "sse4.2");
     assert(archspec::map_feature_to_llvm("x86_64", "avx512_vnni") == "avx512vnni");
 
+    // Test cpuinfo/archspec -> LLVM name mappings
+    assert(archspec::map_feature_to_llvm("x86_64", "lahf_lm") == "sahf");
+    assert(archspec::map_feature_to_llvm("x86_64", "pclmulqdq") == "pclmul");
+    assert(archspec::map_feature_to_llvm("x86_64", "rdrand") == "rdrnd");
+    assert(archspec::map_feature_to_llvm("x86_64", "abm") == "lzcnt");
+    assert(archspec::map_feature_to_llvm("x86_64", "bmi1") == "bmi");
+    assert(archspec::map_feature_to_llvm("x86_64", "sha_ni") == "sha");
+    // AMX features use hyphens in LLVM
+    assert(archspec::map_feature_to_llvm("x86_64", "amx_bf16") == "amx-bf16");
+    assert(archspec::map_feature_to_llvm("x86_64", "amx_int8") == "amx-int8");
+    assert(archspec::map_feature_to_llvm("x86_64", "amx_tile") == "amx-tile");
+    // AVX-512 features
+    assert(archspec::map_feature_to_llvm("x86_64", "avx512_vp2intersect") == "avx512vp2intersect");
+
+    // Test filter-out (features with no LLVM equivalent)
+    assert(archspec::map_feature_to_llvm("x86_64", "3dnow") == "");
+    assert(archspec::map_feature_to_llvm("x86_64", "avx512er") == "");
+    assert(archspec::map_feature_to_llvm("x86_64", "avx512pf") == "");
+
     // Test pass-through
     assert(archspec::map_feature_to_llvm("x86_64", "avx") == "avx");
     assert(archspec::map_feature_to_llvm("x86_64", "avx2") == "avx2");
     assert(archspec::map_feature_to_llvm("x86_64", "fma") == "fma");
+    assert(archspec::map_feature_to_llvm("x86_64", "bmi2") == "bmi2");
+    assert(archspec::map_feature_to_llvm("x86_64", "popcnt") == "popcnt");
 
     printf("  PASS: x86_64 feature mapping\n");
 }
