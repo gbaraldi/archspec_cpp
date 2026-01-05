@@ -39,12 +39,39 @@ else ifeq ($(UNAME),FreeBSD)
     SHARED_FLAGS = -shared -fPIC
     STATIC_EXT = .a
 else ifeq ($(UNAME),Windows)
-    # Windows (MinGW)
+    # Windows (native or cmd.exe)
     LDFLAGS ?=
     SHARED_EXT = .dll
     SHARED_FLAGS = -shared
     STATIC_EXT = .a
     EXE_EXT = .exe
+else ifneq (,$(findstring MINGW,$(UNAME)))
+    # MinGW (MSYS2 MINGW64/MINGW32 environment)
+    LDFLAGS ?=
+    SHARED_EXT = .dll
+    SHARED_FLAGS = -shared
+    STATIC_EXT = .a
+    EXE_EXT = .exe
+else ifneq (,$(findstring MSYS,$(UNAME)))
+    # MSYS2 MSYS environment
+    LDFLAGS ?=
+    SHARED_EXT = .dll
+    SHARED_FLAGS = -shared
+    STATIC_EXT = .a
+    EXE_EXT = .exe
+else ifneq (,$(findstring CYGWIN,$(UNAME)))
+    # Cygwin
+    LDFLAGS ?=
+    SHARED_EXT = .dll
+    SHARED_FLAGS = -shared
+    STATIC_EXT = .a
+    EXE_EXT = .exe
+else
+    # Unknown Unix-like (fallback to Linux-like settings)
+    LDFLAGS ?=
+    SHARED_EXT = .so
+    SHARED_FLAGS = -shared -fPIC
+    STATIC_EXT = .a
 endif
 
 # Directories

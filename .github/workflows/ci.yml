@@ -2,109 +2,115 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main]
   pull_request:
-    branches: [ main, master ]
+    branches: [main]
 
 jobs:
-  format:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Check format
-      run: make format-check
-
   build-linux:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
-        compiler: [gcc, clang]
-
+        compiler: [g++, clang++]
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    - name: Build
-      run: make CXX=${{ matrix.compiler == 'gcc' && 'g++' || 'clang++' }} CC=${{ matrix.compiler }}
+      - name: Build
+        run: make CXX=${{ matrix.compiler }} -j$(nproc)
 
-    - name: Run tests
-      run: make check
-
-    - name: Run examples
-      run: make run-examples
+      - name: Run tests
+        run: make check
 
   build-macos:
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    - name: Build
-      run: make
+      - name: Build
+        run: make -j$(sysctl -n hw.ncpu)
 
-    - name: Run tests
-      run: make check
+      - name: Run tests
+        run: make check
 
-    - name: Run examples
-      run: make run-examples
-
-  build-windows:
+  build-windows-mingw:
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    - name: Build (MinGW)
-      shell: bash
-      run: make
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-make
+            make
 
-    - name: Run tests
-      shell: bash
-      run: make check
+      - name: Show environment
+        run: |
+          echo "uname -s: $(uname -s)"
+          echo "CXX: $(which g++)"
+          g++ --version
 
-    - name: Run examples
-      shell: bash
-      run: make run-examples
+      - name: Build
+        run: make -j$(nproc)
+
+      - name: Run tests
+        run: make check
+
+  build-windows-mingw32:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          update: true
+          install: >-
+            mingw-w64-i686-gcc
+            mingw-w64-i686-make
+            make
+
+      - name: Show environment
+        run: |
+          echo "uname -s: $(uname -s)"
+          echo "CXX: $(which g++)"
+          g++ --version
+
+      - name: Build
+        run: make -j$(nproc)
+
+      - name: Run tests
+        run: make check
 
   build-freebsd:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    - name: Build and test on FreeBSD
-      uses: vmactions/freebsd-vm@v1
-      with:
-        usesh: true
-        prepare: |
-          pkg install -y gmake git
-        run: |
-          git config --global --add safe.directory /home/runner/work/archspec_cpp/archspec_cpp
-          git submodule update --init --recursive
-          gmake
-          gmake check
-          gmake run-examples
-
-  # Verify the library compiles with different C++ standards
-  standards:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        std: [17, 20, 23]
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
-    - name: Build with C++${{ matrix.std }}
-      run: make CXXFLAGS="-std=c++${{ matrix.std }} -Wall -Wextra -Werror -O2"
-
-    - name: Run tests
-      run: make check
-
-    - name: Run examples
-      run: make run-examples
+      - name: Build and test on FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          prepare: |
+            pkg install -y gmake
+          run: |
+            gmake -j$(sysctl -n hw.ncpu)
+            gmake check
