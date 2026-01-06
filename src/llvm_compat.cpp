@@ -330,6 +330,7 @@ static const std::unordered_map<std::string, std::string> aarch64_cpu_reverse_ma
     {"neoverse-n2", "neoverse_n2"},
     {"neoverse-v1", "neoverse_v1"},
     {"neoverse-v2", "neoverse_v2"},
+    {"neoverse-512tvb", "neoverse_v1"},  // 512tvb is V1 with 512-bit SVE
     // Nvidia
     {"carmel", "aarch64"},
     // Ampere

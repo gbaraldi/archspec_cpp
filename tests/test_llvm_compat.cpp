@@ -236,6 +236,7 @@ void test_cpu_name_normalization() {
     assert(archspec::normalize_cpu_name("aarch64", "neoverse-n2") == "neoverse_n2");
     assert(archspec::normalize_cpu_name("aarch64", "neoverse-v1") == "neoverse_v1");
     assert(archspec::normalize_cpu_name("aarch64", "neoverse-v2") == "neoverse_v2");
+    assert(archspec::normalize_cpu_name("aarch64", "neoverse-512tvb") == "neoverse_v1");  // 512tvb is V1 alias
 
     // Test Thunderx normalization
     assert(archspec::normalize_cpu_name("aarch64", "thunderx2t99") == "thunderx2");
